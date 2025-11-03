@@ -1,0 +1,69 @@
+[gd_scene load_steps=4 format=3 uid="uid://ulcwlecnrkim"]
+
+[ext_resource type="PackedScene" uid="uid://comduwpd7rq5v" path="res://scenes/maps/map_test.tscn" id="1_ig7tw"]
+[ext_resource type="PackedScene" uid="uid://1muf7p0yfxlv" path="res://scenes/entities/soldier_test.tscn" id="2_0xm2m"]
+[ext_resource type="PackedScene" uid="uid://cguuonyqx5ac6" path="res://scenes/ui/hand_of_cards.tscn" id="3_h2yge"]
+
+[node name="Main" type="Node2D"]
+position = Vector2(-730, -95)
+
+[node name="MapTest" parent="." instance=ExtResource("1_ig7tw")]
+metadata/_edit_lock_ = true
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(-2764, -1577)
+offset = Vector2(3200, 3200)
+zoom = Vector2(0.2, 0.2)
+
+[node name="team2" type="Node" parent="."]
+
+[node name="SoldierTest" parent="team2" instance=ExtResource("2_0xm2m")]
+position = Vector2(-267, 2760)
+
+[node name="SoldierTest2" parent="team2" instance=ExtResource("2_0xm2m")]
+position = Vector2(1625, 2810)
+
+[node name="SoldierTest3" parent="team2" instance=ExtResource("2_0xm2m")]
+position = Vector2(585, 2702)
+
+[node name="SoldierTest4" parent="team2" instance=ExtResource("2_0xm2m")]
+position = Vector2(69, 2803)
+
+[node name="SoldierTest5" parent="team2" instance=ExtResource("2_0xm2m")]
+position = Vector2(2131, 2832)
+
+[node name="SoldierTest6" parent="team2" instance=ExtResource("2_0xm2m")]
+position = Vector2(935, 2788)
+
+[node name="team1" type="Node" parent="."]
+
+[node name="SoldierTest" parent="team1" instance=ExtResource("2_0xm2m")]
+position = Vector2(-217, 334)
+rotation = 3.1415927
+
+[node name="SoldierTest2" parent="team1" instance=ExtResource("2_0xm2m")]
+position = Vector2(1675, 384)
+rotation = 3.1415927
+
+[node name="SoldierTest3" parent="team1" instance=ExtResource("2_0xm2m")]
+position = Vector2(635, 276)
+rotation = 3.1415927
+
+[node name="SoldierTest4" parent="team1" instance=ExtResource("2_0xm2m")]
+position = Vector2(119, 377)
+rotation = 3.1415927
+
+[node name="SoldierTest5" parent="team1" instance=ExtResource("2_0xm2m")]
+position = Vector2(2181, 406)
+rotation = 3.1415927
+
+[node name="SoldierTest6" parent="team1" instance=ExtResource("2_0xm2m")]
+position = Vector2(985, 362)
+rotation = 3.1415927
+
+[node name="HandOfCards" parent="." instance=ExtResource("3_h2yge")]
+offset_left = -2346.0002
+offset_top = 2435.0
+offset_right = -2346.0002
+offset_bottom = 2435.0
+scale = Vector2(4.6515436, 4.6515436)
