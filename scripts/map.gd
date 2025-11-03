@@ -1,0 +1,37 @@
+extends Node2D
+
+@onready var tile_map: TileMapLayer = $TileMapLayer
+@onready var goal1: Area2D = $Goal
+@onready var goal2: Area2D = $Goal2
+
+const goal1_tiles_from_top: int = 2
+const goal2_tiles_from_top: int = 21
+const tile_size_pixels: int = 128
+const goal_height: int = tile_size_pixels * 3
+
+# map_width_tiles, tile_width_pixels, trench_height_tiles)
+
+func init() -> void:
+	var num_tiles = tile_map.get_used_cells().size()
+	var map_pixel_width = sqrt(num_tiles) * tile_size_pixels
+	
+	# 1/2 distance to center of shape + tiles from top
+	const goal1_pixels_from_top: int = goal1_tiles_from_top * tile_size_pixels + (goal_height / 2)
+	goal1.init(
+		map_pixel_width
+		, goal_height
+		, Vector2(
+			map_pixel_width / 2
+			, goal1_pixels_from_top
+		)
+	)
+	# 1/2 distance to center of shape + tiles from top
+	const goal2_pixels_from_top: int = goal2_tiles_from_top * tile_size_pixels + (goal_height / 2)
+	goal2.init(
+		map_pixel_width
+		, goal_height
+		, Vector2(
+			map_pixel_width / 2
+			, goal2_pixels_from_top
+		) 
+	)

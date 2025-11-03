@@ -14,3 +14,10 @@ config/name="Trencho"
 run/main_scene="uid://ulcwlecnrkim"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
+
+[layer_names]
+
+2d_physics/layer_1="terrain"
+2d_physics/layer_2="bodies"
+2d_physics/layer_3="team1_units"
+2d_physics/layer_4="team2_units"

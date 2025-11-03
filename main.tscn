@@ -1,60 +1,60 @@
-[gd_scene load_steps=4 format=3 uid="uid://ulcwlecnrkim"]
+[gd_scene load_steps=5 format=3 uid="uid://ulcwlecnrkim"]
 
+[ext_resource type="Script" uid="uid://ccfyd1thlvbdh" path="res://scripts/game.gd" id="1_1bvp3"]
 [ext_resource type="PackedScene" uid="uid://comduwpd7rq5v" path="res://scenes/maps/map_test.tscn" id="1_ig7tw"]
 [ext_resource type="PackedScene" uid="uid://1muf7p0yfxlv" path="res://scenes/entities/soldier_test.tscn" id="2_0xm2m"]
 [ext_resource type="PackedScene" uid="uid://cguuonyqx5ac6" path="res://scenes/ui/hand_of_cards.tscn" id="3_h2yge"]
 
 [node name="Main" type="Node2D"]
-position = Vector2(-730, -95)
+script = ExtResource("1_1bvp3")
 
 [node name="MapTest" parent="." instance=ExtResource("1_ig7tw")]
 metadata/_edit_lock_ = true
 
 [node name="Camera2D" type="Camera2D" parent="."]
-position = Vector2(-2764, -1577)
-offset = Vector2(3200, 3200)
+position = Vector2(2880, 1621)
 zoom = Vector2(0.2, 0.2)
 
 [node name="team2" type="Node" parent="."]
 
 [node name="SoldierTest" parent="team2" instance=ExtResource("2_0xm2m")]
-position = Vector2(-267, 2760)
+position = Vector2(461, 2866)
 
 [node name="SoldierTest2" parent="team2" instance=ExtResource("2_0xm2m")]
-position = Vector2(1625, 2810)
+position = Vector2(2353, 2916)
 
 [node name="SoldierTest3" parent="team2" instance=ExtResource("2_0xm2m")]
-position = Vector2(585, 2702)
+position = Vector2(1313, 2808)
 
 [node name="SoldierTest4" parent="team2" instance=ExtResource("2_0xm2m")]
-position = Vector2(69, 2803)
+position = Vector2(797, 2909)
 
 [node name="SoldierTest5" parent="team2" instance=ExtResource("2_0xm2m")]
-position = Vector2(2131, 2832)
+position = Vector2(2859, 2938)
 
 [node name="SoldierTest6" parent="team2" instance=ExtResource("2_0xm2m")]
-position = Vector2(935, 2788)
+position = Vector2(1663, 2894)
 
 [node name="team1" type="Node" parent="."]
 
 [node name="SoldierTest" parent="team1" instance=ExtResource("2_0xm2m")]
-position = Vector2(-217, 334)
+position = Vector2(445, 451)
 rotation = 3.1415927
 
 [node name="SoldierTest2" parent="team1" instance=ExtResource("2_0xm2m")]
-position = Vector2(1675, 384)
+position = Vector2(2337, 501)
 rotation = 3.1415927
 
 [node name="SoldierTest3" parent="team1" instance=ExtResource("2_0xm2m")]
-position = Vector2(635, 276)
+position = Vector2(1297, 393)
 rotation = 3.1415927
 
 [node name="SoldierTest4" parent="team1" instance=ExtResource("2_0xm2m")]
-position = Vector2(119, 377)
+position = Vector2(781, 494)
 rotation = 3.1415927
 
 [node name="SoldierTest5" parent="team1" instance=ExtResource("2_0xm2m")]
-position = Vector2(2181, 406)
+position = Vector2(2843, 523)
 rotation = 3.1415927
 
 [node name="SoldierTest6" parent="team1" instance=ExtResource("2_0xm2m")]
@@ -62,8 +62,8 @@ position = Vector2(985, 362)
 rotation = 3.1415927
 
 [node name="HandOfCards" parent="." instance=ExtResource("3_h2yge")]
-offset_left = -2346.0002
-offset_top = 2435.0
-offset_right = -2346.0002
-offset_bottom = 2435.0
+offset_left = 3330.0002
+offset_top = 2339.0002
+offset_right = 3330.0002
+offset_bottom = 2339.0002
 scale = Vector2(4.6515436, 4.6515436)

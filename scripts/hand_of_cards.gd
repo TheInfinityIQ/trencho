@@ -41,7 +41,7 @@ func build_card(card, card_count) -> void:
 		texture = commander_image
 	add_child(new_card)
 	new_card.position.x += position_x_offset * card_count
-	new_card.create(texture, new_card.position)
+	new_card.init(texture, new_card.position)
 
 func _on_card_mouse_entered() -> void:
 	pass # Replace with function body.

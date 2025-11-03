@@ -18,7 +18,7 @@ func _on_mouse_exited() -> void:
 		return
 	depress()
 
-func create(new_texture: Texture2D, created_position: Vector2) -> void:
+func init(new_texture: Texture2D, created_position: Vector2) -> void:
 	texture = new_texture
 	start_position = created_position
 
