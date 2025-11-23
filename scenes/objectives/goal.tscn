@@ -9,3 +9,5 @@ script = ExtResource("1_04fne")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("SegmentShape2D_04fne")
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]

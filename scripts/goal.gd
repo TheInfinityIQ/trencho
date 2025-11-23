@@ -9,3 +9,7 @@ func init(width_pixels, height_pixels, new_position) -> void:
 	var rectShape: RectangleShape2D = RectangleShape2D.new()
 	rectShape.size = Vector2(width_pixels, height_pixels)
 	collision.shape = rectShape
+
+
+func _on_body_entered(body: Node2D) -> void:
+	pass # Replace with function body.

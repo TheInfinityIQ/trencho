@@ -10,4 +10,3 @@ func _ready() -> void:
 
 func init_map() -> void:
 	map.init()
-	pass

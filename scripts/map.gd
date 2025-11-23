@@ -9,8 +9,6 @@ const goal2_tiles_from_top: int = 21
 const tile_size_pixels: int = 128
 const goal_height: int = tile_size_pixels * 3
 
-# map_width_tiles, tile_width_pixels, trench_height_tiles)
-
 func init() -> void:
 	var num_tiles = tile_map.get_used_cells().size()
 	var map_pixel_width = sqrt(num_tiles) * tile_size_pixels
@@ -35,3 +33,6 @@ func init() -> void:
 			, goal2_pixels_from_top
 		) 
 	)
+
+func entered_goal(goal_id):
+	pass
