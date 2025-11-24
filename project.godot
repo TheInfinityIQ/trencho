@@ -15,6 +15,10 @@ run/main_scene="uid://ulcwlecnrkim"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
 
+[autoload]
+
+GameMaster="*res://scripts/game_master.gd"
+
 [layer_names]
 
 2d_physics/layer_1="terrain"

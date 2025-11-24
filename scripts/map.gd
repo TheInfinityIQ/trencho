@@ -21,7 +21,8 @@ func init() -> void:
 		, Vector2(
 			map_pixel_width / 2
 			, goal1_pixels_from_top
-		)
+		),
+		1
 	)
 	# 1/2 distance to center of shape + tiles from top
 	const goal2_pixels_from_top: int = goal2_tiles_from_top * tile_size_pixels + (goal_height / 2)
@@ -31,8 +32,6 @@ func init() -> void:
 		, Vector2(
 			map_pixel_width / 2
 			, goal2_pixels_from_top
-		) 
+		),
+		2
 	)
-
-func entered_goal(goal_id):
-	pass

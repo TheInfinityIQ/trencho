@@ -20,8 +20,8 @@ var is_attacking: bool = false
 
 enum COL_LAYERS {
 	BODIES = 2,
-	TEAM1 = 3,
-	TEAM2 = 4
+	TEAM_ONE = 3,
+	TEAM_TWO = 4
 }
 
 func _ready() -> void:
@@ -29,13 +29,15 @@ func _ready() -> void:
 	collision_mask = COL_LAYERS.BODIES
 	melee_timer.wait_time = randf_range(1, 2)
 	movement_speed_modifier = randf_range(0.85, 1.20)
-	if team_node.name == "team1":
+	if team_node.name == "TEAM_ONE":
 		direction_vector = Vector2.DOWN
-		area_melee_range.collision_layer = COL_LAYERS.TEAM1
-		area_melee_range.collision_mask = COL_LAYERS.TEAM2
+		area_melee_range.collision_layer = COL_LAYERS.TEAM_ONE
+		area_melee_range.collision_mask = COL_LAYERS.TEAM_TWO
+		collision_layer = COL_LAYERS.TEAM_ONE
 		return
-	area_melee_range.collision_layer = COL_LAYERS.TEAM2
-	area_melee_range.collision_mask = COL_LAYERS.TEAM1
+	area_melee_range.collision_layer = COL_LAYERS.TEAM_TWO
+	area_melee_range.collision_mask = COL_LAYERS.TEAM_ONE
+	collision_layer = COL_LAYERS.TEAM_TWO
 	direction_vector = Vector2.UP
 
 func _physics_process(_delta: float) -> void:

@@ -1,0 +1,27 @@
+[gd_scene load_steps=2 format=3 uid="uid://btt3ujk2mw5sb"]
+
+[ext_resource type="Script" uid="uid://ds8ic4ob4crob" path="res://scripts/score_ui.gd" id="1_t7e41"]
+
+[node name="Score" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_t7e41")
+
+[node name="TeamOneScore" type="Label" parent="."]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+theme_override_font_sizes/font_size = 128
+text = "Team One Score: 1"
+
+[node name="TeamTwoScore" type="Label" parent="."]
+layout_mode = 0
+offset_top = 180.0
+offset_right = 1146.0
+offset_bottom = 355.0
+theme_override_font_sizes/font_size = 128
+text = "Team Two Score: 1"
