@@ -19,47 +19,82 @@ zoom = Vector2(0.2, 0.2)
 [node name="TEAM_TWO" type="Node" parent="."]
 
 [node name="SoldierTest" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
-position = Vector2(461, 2866)
+position = Vector2(419, 2870)
 
 [node name="SoldierTest2" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
-position = Vector2(2353, 2916)
+position = Vector2(687, 2874)
 
 [node name="SoldierTest3" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
-position = Vector2(1313, 2808)
+position = Vector2(1013, 2863)
 
 [node name="SoldierTest4" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
-position = Vector2(797, 2909)
+position = Vector2(2296, 2877)
 
 [node name="SoldierTest5" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
-position = Vector2(2859, 2938)
+position = Vector2(3063, 2873)
 
 [node name="SoldierTest6" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
-position = Vector2(1663, 2894)
+position = Vector2(1477, 2861)
+
+[node name="SoldierTest7" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
+position = Vector2(1260, 2894)
+
+[node name="SoldierTest8" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
+position = Vector2(2099, 2911)
+
+[node name="SoldierTest9" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
+position = Vector2(2587, 2778)
+
+[node name="SoldierTest10" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
+position = Vector2(1844, 2907)
+
+[node name="SoldierTest11" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
+position = Vector2(2805, 2832)
 
 [node name="TEAM_ONE" type="Node" parent="."]
 
 [node name="SoldierTest" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
-position = Vector2(445, 451)
+position = Vector2(708, 431)
 rotation = 3.1415927
 
 [node name="SoldierTest2" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
-position = Vector2(2337, 501)
+position = Vector2(391, 491)
 rotation = 3.1415927
 
 [node name="SoldierTest3" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
-position = Vector2(1297, 393)
+position = Vector2(1191, 316)
 rotation = 3.1415927
 
 [node name="SoldierTest4" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
-position = Vector2(781, 494)
+position = Vector2(1029, 500)
 rotation = 3.1415927
 
 [node name="SoldierTest5" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
-position = Vector2(2843, 523)
+position = Vector2(2597, 261)
 rotation = 3.1415927
 
 [node name="SoldierTest6" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
-position = Vector2(985, 362)
+position = Vector2(2775, 473)
+rotation = 3.1415927
+
+[node name="SoldierTest7" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
+position = Vector2(1365, 514)
+rotation = 3.1415927
+
+[node name="SoldierTest8" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
+position = Vector2(1595, 482)
+rotation = 3.1415927
+
+[node name="SoldierTest9" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
+position = Vector2(1852, 459)
+rotation = 3.1415927
+
+[node name="SoldierTest10" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
+position = Vector2(2114, 426)
+rotation = 3.1415927
+
+[node name="SoldierTest11" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
+position = Vector2(2810, 759)
 rotation = 3.1415927
 
 [node name="HandOfCards" parent="." instance=ExtResource("3_h2yge")]

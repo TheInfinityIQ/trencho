@@ -1,13 +1,17 @@
-[gd_scene load_steps=6 format=3 uid="uid://1muf7p0yfxlv"]
+[gd_scene load_steps=7 format=3 uid="uid://1muf7p0yfxlv"]
 
 [ext_resource type="Script" uid="uid://bjhxnstwmwdpl" path="res://scripts/enemy.gd" id="1_xjuyx"]
 [ext_resource type="Texture2D" uid="uid://dp10wft6vst3w" path="res://assets/units/gun.png" id="2_tmn6a"]
 [ext_resource type="Texture2D" uid="uid://fjmjfacp7r88" path="res://assets/units/soldier_test.png" id="3_pdd2d"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_hol2v"]
+radius = 35.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_xjuyx"]
-radius = 75.0
+radius = 100.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_tmn6a"]
+radius = 650.0
 
 [node name="SoldierTest" type="CharacterBody2D"]
 script = ExtResource("1_xjuyx")
@@ -15,6 +19,7 @@ script = ExtResource("1_xjuyx")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 scale = Vector2(2, 2)
 shape = SubResource("CircleShape2D_hol2v")
+debug_color = Color(0.63347846, 0.5281759, 0.02754696, 0.41960785)
 
 [node name="SpriteWeapon" type="Sprite2D" parent="."]
 position = Vector2(28, -57)
@@ -37,13 +42,23 @@ offset_right = 84.0
 offset_bottom = 109.0
 color = Color(1, 0, 0, 1)
 
-[node name="Area2D" type="Area2D" parent="."]
+[node name="MeleeArea2D" type="Area2D" parent="."]
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="MeleeArea2D"]
 position = Vector2(0, -1)
 shape = SubResource("CircleShape2D_xjuyx")
+debug_color = Color(0.899061, 0.18719465, 0.62835115, 0.41960785)
 
-[node name="Timer" type="Timer" parent="."]
+[node name="MeleeTimer" type="Timer" parent="."]
 
-[connection signal="area_shape_entered" from="Area2D" to="." method="_on_area_2d_area_shape_entered"]
-[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
+[node name="RangedTimer" type="Timer" parent="."]
+
+[node name="RangedArea2D" type="Area2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RangedArea2D"]
+shape = SubResource("CircleShape2D_tmn6a")
+
+[connection signal="body_entered" from="MeleeArea2D" to="." method="_on_body_entered_melee_area"]
+[connection signal="timeout" from="MeleeTimer" to="." method="_on_melee_timer_timeout"]
+[connection signal="timeout" from="RangedTimer" to="." method="_on_ranged_timer_timeout"]
+[connection signal="body_entered" from="RangedArea2D" to="." method="_on_body_entered_ranged_area"]

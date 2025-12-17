@@ -13,7 +13,7 @@ func init() -> void:
 	var num_tiles = tile_map.get_used_cells().size()
 	var map_pixel_width = sqrt(num_tiles) * tile_size_pixels
 	
-	# 1/2 distance to center of shape + tiles from top
+	# 1/2 distance to center of shape + tiles from top~~
 	const goal1_pixels_from_top: int = goal1_tiles_from_top * tile_size_pixels + (goal_height / 2)
 	goal1.init(
 		map_pixel_width
