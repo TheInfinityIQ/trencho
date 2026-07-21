@@ -1,6 +1,8 @@
 extends CharacterBody2D
 class_name Unit
 
+#test
+
 const movement_speed: float = 300
 var movement_speed_modifier: float
 var direction_vector: Vector2

@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://1muf7p0yfxlv"]
+[gd_scene format=3 uid="uid://1muf7p0yfxlv"]
 
 [ext_resource type="Script" uid="uid://bjhxnstwmwdpl" path="res://scripts/enemy.gd" id="1_xjuyx"]
 [ext_resource type="Texture2D" uid="uid://dp10wft6vst3w" path="res://assets/units/gun.png" id="2_tmn6a"]
@@ -13,49 +13,49 @@ radius = 100.0
 [sub_resource type="CircleShape2D" id="CircleShape2D_tmn6a"]
 radius = 650.0
 
-[node name="SoldierTest" type="CharacterBody2D"]
+[node name="SoldierTest" type="CharacterBody2D" unique_id=1593551066]
 script = ExtResource("1_xjuyx")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=284553367]
 scale = Vector2(2, 2)
 shape = SubResource("CircleShape2D_hol2v")
 debug_color = Color(0.63347846, 0.5281759, 0.02754696, 0.41960785)
 
-[node name="SpriteWeapon" type="Sprite2D" parent="."]
+[node name="SpriteWeapon" type="Sprite2D" parent="." unique_id=627451468]
 position = Vector2(28, -57)
 texture = ExtResource("2_tmn6a")
 
-[node name="SpriteBody" type="Sprite2D" parent="."]
+[node name="SpriteBody" type="Sprite2D" parent="." unique_id=391705051]
 texture = ExtResource("3_pdd2d")
 
-[node name="HealthBar" type="ColorRect" parent="."]
+[node name="HealthBar" type="ColorRect" parent="." unique_id=2101578815]
 offset_left = -73.0
 offset_top = 70.0
 offset_right = 87.0
 offset_bottom = 112.0
 color = Color(0.11119685, 0.11119684, 0.11119684, 1)
 
-[node name="CurrentHealth" type="ColorRect" parent="."]
+[node name="CurrentHealth" type="ColorRect" parent="." unique_id=1788724624]
 offset_left = -70.0
 offset_top = 73.0
 offset_right = 84.0
 offset_bottom = 109.0
 color = Color(1, 0, 0, 1)
 
-[node name="MeleeArea2D" type="Area2D" parent="."]
+[node name="MeleeArea2D" type="Area2D" parent="." unique_id=1276220252]
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="MeleeArea2D"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="MeleeArea2D" unique_id=1762076259]
 position = Vector2(0, -1)
 shape = SubResource("CircleShape2D_xjuyx")
 debug_color = Color(0.899061, 0.18719465, 0.62835115, 0.41960785)
 
-[node name="MeleeTimer" type="Timer" parent="."]
+[node name="MeleeTimer" type="Timer" parent="." unique_id=2120711403]
 
-[node name="RangedTimer" type="Timer" parent="."]
+[node name="RangedTimer" type="Timer" parent="." unique_id=548193913]
 
-[node name="RangedArea2D" type="Area2D" parent="."]
+[node name="RangedArea2D" type="Area2D" parent="." unique_id=187610181]
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="RangedArea2D"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RangedArea2D" unique_id=960497589]
 shape = SubResource("CircleShape2D_tmn6a")
 
 [connection signal="body_entered" from="MeleeArea2D" to="." method="_on_body_entered_melee_area"]
