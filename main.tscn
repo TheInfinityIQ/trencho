@@ -1,109 +1,43 @@
-[gd_scene load_steps=6 format=3 uid="uid://ulcwlecnrkim"]
+[gd_scene format=3 uid="uid://ulcwlecnrkim"]
 
 [ext_resource type="Script" uid="uid://ccfyd1thlvbdh" path="res://scripts/game.gd" id="1_1bvp3"]
 [ext_resource type="PackedScene" uid="uid://comduwpd7rq5v" path="res://scenes/maps/map_test.tscn" id="1_ig7tw"]
-[ext_resource type="PackedScene" uid="uid://1muf7p0yfxlv" path="res://scenes/entities/soldier_test.tscn" id="2_0xm2m"]
 [ext_resource type="PackedScene" uid="uid://cguuonyqx5ac6" path="res://scenes/ui/hand_of_cards.tscn" id="3_h2yge"]
+[ext_resource type="PackedScene" uid="uid://h8pk60l2lp16" path="res://scenes/special/spawn.tscn" id="3_lquwl"]
 [ext_resource type="PackedScene" uid="uid://btt3ujk2mw5sb" path="res://scenes/ui/Score.tscn" id="5_lquwl"]
 
-[node name="Main" type="Node2D"]
+[node name="Main" type="Node2D" unique_id=1095361808]
 script = ExtResource("1_1bvp3")
 
-[node name="MapTest" parent="." instance=ExtResource("1_ig7tw")]
+[node name="MapTest" parent="." unique_id=43000531 instance=ExtResource("1_ig7tw")]
 metadata/_edit_lock_ = true
 
-[node name="Camera2D" type="Camera2D" parent="."]
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1478990274]
 position = Vector2(2880, 1621)
 zoom = Vector2(0.2, 0.2)
 
-[node name="TEAM_TWO" type="Node" parent="."]
+[node name="TEAM_ONE" parent="." unique_id=1804767893 instance=ExtResource("3_lquwl")]
 
-[node name="SoldierTest" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
-position = Vector2(419, 2870)
+[node name="TEAM_TWO" parent="." unique_id=458815835 instance=ExtResource("3_lquwl")]
 
-[node name="SoldierTest2" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
-position = Vector2(687, 2874)
-
-[node name="SoldierTest3" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
-position = Vector2(1013, 2863)
-
-[node name="SoldierTest4" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
-position = Vector2(2296, 2877)
-
-[node name="SoldierTest5" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
-position = Vector2(3063, 2873)
-
-[node name="SoldierTest6" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
-position = Vector2(1477, 2861)
-
-[node name="SoldierTest7" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
-position = Vector2(1260, 2894)
-
-[node name="SoldierTest8" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
-position = Vector2(2099, 2911)
-
-[node name="SoldierTest9" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
-position = Vector2(2587, 2778)
-
-[node name="SoldierTest10" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
-position = Vector2(1844, 2907)
-
-[node name="SoldierTest11" parent="TEAM_TWO" instance=ExtResource("2_0xm2m")]
-position = Vector2(2805, 2832)
-
-[node name="TEAM_ONE" type="Node" parent="."]
-
-[node name="SoldierTest" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
-position = Vector2(708, 431)
-rotation = 3.1415927
-
-[node name="SoldierTest2" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
-position = Vector2(391, 491)
-rotation = 3.1415927
-
-[node name="SoldierTest3" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
-position = Vector2(1191, 316)
-rotation = 3.1415927
-
-[node name="SoldierTest4" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
-position = Vector2(1029, 500)
-rotation = 3.1415927
-
-[node name="SoldierTest5" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
-position = Vector2(2597, 261)
-rotation = 3.1415927
-
-[node name="SoldierTest6" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
-position = Vector2(2775, 473)
-rotation = 3.1415927
-
-[node name="SoldierTest7" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
-position = Vector2(1365, 514)
-rotation = 3.1415927
-
-[node name="SoldierTest8" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
-position = Vector2(1595, 482)
-rotation = 3.1415927
-
-[node name="SoldierTest9" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
-position = Vector2(1852, 459)
-rotation = 3.1415927
-
-[node name="SoldierTest10" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
-position = Vector2(2114, 426)
-rotation = 3.1415927
-
-[node name="SoldierTest11" parent="TEAM_ONE" instance=ExtResource("2_0xm2m")]
-position = Vector2(2810, 759)
-rotation = 3.1415927
-
-[node name="HandOfCards" parent="." instance=ExtResource("3_h2yge")]
+[node name="HandOfCards" parent="." unique_id=1346604646 instance=ExtResource("3_h2yge")]
 offset_left = 3330.0002
 offset_top = 2339.0002
 offset_right = 3330.0002
 offset_bottom = 2339.0002
 scale = Vector2(4.6515436, 4.6515436)
 
-[node name="Score" parent="." instance=ExtResource("5_lquwl")]
+[node name="Score" parent="." unique_id=1111028171 instance=ExtResource("5_lquwl")]
 offset_left = 3310.0
 offset_right = 3310.0
+
+[node name="Team1SpawnTimer" type="Timer" parent="." unique_id=393950997]
+wait_time = 5.0
+autostart = true
+
+[node name="Team2SpawnTimer" type="Timer" parent="." unique_id=1614581178]
+wait_time = 5.0
+autostart = true
+
+[connection signal="timeout" from="Team1SpawnTimer" to="." method="_on_team_1_spawn_timer_timeout"]
+[connection signal="timeout" from="Team2SpawnTimer" to="." method="_on_team_2_spawn_timer_timeout"]

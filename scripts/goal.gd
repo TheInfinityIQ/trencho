@@ -5,7 +5,6 @@ var team_id: int
 
 func init(width_pixels, height_pixels, new_position, team) -> void:
 	self.position = new_position
-	print(new_position)
 	
 	var rectShape: RectangleShape2D = RectangleShape2D.new()
 	rectShape.size = Vector2(width_pixels, height_pixels)

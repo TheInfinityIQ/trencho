@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://h8pk60l2lp16"]
+
+[ext_resource type="Script" uid="uid://q4vxiin1jiwp" path="res://scripts/spawn.gd" id="1_iiawt"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_iiawt"]
+
+[node name="Spawn" type="Node2D" unique_id=1804767893]
+script = ExtResource("1_iiawt")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=752888154]
+shape = SubResource("RectangleShape2D_iiawt")

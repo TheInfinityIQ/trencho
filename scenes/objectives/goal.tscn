@@ -1,13 +1,13 @@
-[gd_scene load_steps=3 format=3 uid="uid://ccdvbibt1uo8w"]
+[gd_scene format=3 uid="uid://ccdvbibt1uo8w"]
 
 [ext_resource type="Script" uid="uid://cfpymbbo5yoty" path="res://scripts/goal.gd" id="1_04fne"]
 
 [sub_resource type="SegmentShape2D" id="SegmentShape2D_04fne"]
 
-[node name="Goal" type="Area2D"]
+[node name="Goal" type="Area2D" unique_id=498755165]
 script = ExtResource("1_04fne")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=832370933]
 shape = SubResource("SegmentShape2D_04fne")
 
 [connection signal="body_entered" from="." to="." method="_on_body_entered"]

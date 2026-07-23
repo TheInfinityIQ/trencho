@@ -1,8 +1,6 @@
 extends CharacterBody2D
 class_name Unit
 
-#test
-
 const movement_speed: float = 300
 var movement_speed_modifier: float
 var direction_vector: Vector2
@@ -22,6 +20,9 @@ var attack_ranged_strength: int = 40
 @onready var ranged_timer: Timer = $RangedTimer
 @onready var area_melee_range: Area2D = $MeleeArea2D
 @onready var area_ranged_range: Area2D = $RangedArea2D
+@onready var weapon_muzzle: Node2D = $MuzzleLocation
+
+var SMOKE_PUFF := preload("res://scripts/fx/fx_smoke.gd")
 
 var is_attacking: bool = false
 
@@ -159,6 +160,7 @@ func attack_melee(enemy) -> void:
 	melee_timer.start()
 
 func attack_ranged(enemy) -> void:
+	spawn_smoke_at_weapon(global_position.direction_to(enemy.global_position))
 	enemy.apply_damage(attack_ranged_strength)
 	if enemy.is_queued_for_deletion():
 		is_attacking = false
@@ -186,3 +188,8 @@ func reset_direction():
 
 func on_enemy_destroyed():
 	animate_attack(null)
+
+func spawn_smoke_at_weapon(puff_direction: Vector2) -> void:
+	var smoke := SMOKE_PUFF.new()
+	get_tree().current_scene.add_child(smoke)
+	smoke.setup(weapon_muzzle.global_position, puff_direction)
