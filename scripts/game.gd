@@ -1,7 +1,7 @@
 extends Node2D
 
-@onready var team1Spawn: Node = get_node("TEAM_ONE")
-@onready var team2Spawn: Node = get_node("TEAM_TWO")
+@onready var team1Spawn: Node = $TEAM_ONE/Spawn
+@onready var team2Spawn: Node = $TEAM_TWO/Spawn
 @onready var map: Node = get_node("MapTest")
 
 const unit = preload("res://scenes/entities/soldier_test.tscn")
@@ -12,9 +12,6 @@ func _ready() -> void:
 
 func init_map() -> void:
 	map.init()
-
-func register_node(node: Node) -> void:
-	add_child(node)
 
 func init_spawns() -> void:
 	var map_dimensions_tiles = map.get_tile_dimensions()
@@ -27,16 +24,22 @@ func init_spawns() -> void:
 	team1Spawn.init(goal_width_pixels, goal_height_pixels, Vector2(goal_offset_x, 0))
 	team2Spawn.init(goal_width_pixels, goal_height_pixels, Vector2(goal_offset_x, map_dimensions_tiles.height * map.get_tile_size() - goal_height_pixels))
 
-func TEST_FAKE_UNITS(num: int, spawn: Spawn) -> void:
+func TEST_FAKE_UNITS(num: int, team: int) -> void:
 	for n in num:
 		var entity: Unit = unit.instantiate()
-		add_child(entity)
-		entity.global_position = spawn.get_spawn_position()
+		if team == 1:
+			$TEAM_ONE.add_child(entity)
+			entity.global_position = team1Spawn.get_spawn_position()
+			continue
+		$TEAM_TWO.add_child(entity)
+		var pos: Vector2 = team2Spawn.get_spawn_position()
+		pos.y += map.get_tile_dimensions().height * map.get_tile_size() - (map.get_tile_dimensions().height * 0.2 * map.get_tile_size())
+		entity.global_position = pos
 
 func _on_team_1_spawn_timer_timeout() -> void:
 	print("spawning team 1")
-	TEST_FAKE_UNITS(randi_range(10, 25), $TEAM_ONE)
+	TEST_FAKE_UNITS(randi_range(1, 5), 1)
 
 func _on_team_2_spawn_timer_timeout() -> void:
 	print("spawning team 2")
-	TEST_FAKE_UNITS(randi_range(10, 25), $TEAM_TWO)
+	TEST_FAKE_UNITS(randi_range(1, 5), 2)

@@ -50,9 +50,11 @@ func init_values() -> void:
 	if team_node.name == "TEAM_ONE":
 		direction_vector = Vector2.DOWN
 		init_direction_vector = direction_vector
+		reset_direction()
 		return
 	direction_vector = Vector2.UP
 	init_direction_vector = direction_vector
+	reset_direction()
 
 func set_collision_layers(): 
 	if team_node.name == "TEAM_ONE":

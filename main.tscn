@@ -16,9 +16,13 @@ metadata/_edit_lock_ = true
 position = Vector2(2880, 1621)
 zoom = Vector2(0.2, 0.2)
 
-[node name="TEAM_ONE" parent="." unique_id=1804767893 instance=ExtResource("3_lquwl")]
+[node name="TEAM_ONE" type="Node" parent="." unique_id=2011835779]
 
-[node name="TEAM_TWO" parent="." unique_id=458815835 instance=ExtResource("3_lquwl")]
+[node name="Spawn" parent="TEAM_ONE" unique_id=1804767893 instance=ExtResource("3_lquwl")]
+
+[node name="TEAM_TWO" type="Node" parent="." unique_id=1339901163]
+
+[node name="Spawn" parent="TEAM_TWO" unique_id=458815835 instance=ExtResource("3_lquwl")]
 
 [node name="HandOfCards" parent="." unique_id=1346604646 instance=ExtResource("3_h2yge")]
 offset_left = 3330.0002
@@ -32,11 +36,11 @@ offset_left = 3310.0
 offset_right = 3310.0
 
 [node name="Team1SpawnTimer" type="Timer" parent="." unique_id=393950997]
-wait_time = 5.0
+wait_time = 3.0
 autostart = true
 
 [node name="Team2SpawnTimer" type="Timer" parent="." unique_id=1614581178]
-wait_time = 5.0
+wait_time = 3.0
 autostart = true
 
 [connection signal="timeout" from="Team1SpawnTimer" to="." method="_on_team_1_spawn_timer_timeout"]
