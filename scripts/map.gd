@@ -36,6 +36,9 @@ func init() -> void:
 		2
 	)
 
-func get_dimensions() -> Dictionary:
+func get_tile_dimensions() -> Dictionary:
 	var map_rect: Rect2i = tile_map.get_used_rect()
 	return { "width" = map_rect.size.x, "height" = map_rect.size.y }
+
+func get_tile_size() -> int:
+	return tile_map.tile_set.tile_size.x

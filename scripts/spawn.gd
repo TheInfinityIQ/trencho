@@ -17,5 +17,8 @@ func init(width_pixels, height_pixels, new_position) -> void:
 	rectShape.size = Vector2(width, height)
 	col.shape = rectShape
 
-func place_entity(entity: Unit) -> void:
-	entity.position = Vector2(randi_range(0, width), randi_range(0, height))
+func get_spawn_position() -> Vector2:
+	return Vector2(
+		randi_range(0, width),
+		randi_range(0, height)
+	)
