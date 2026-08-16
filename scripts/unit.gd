@@ -25,6 +25,7 @@ var attack_ranged_strength: int = 40
 var SMOKE_PUFF := preload("res://scripts/fx/fx_smoke.gd")
 
 var is_attacking: bool = false
+var is_deployed: bool = false
 
 enum COL_LAYERS {
 	BODIES = 2,
@@ -36,6 +37,9 @@ enum ATTACK_MODES {
 	MELEE = 1,
 	RANGED = 2
 }
+
+func deploy_unit():
+	is_deployed = true
 
 func _ready() -> void:
 	init_values()
@@ -51,10 +55,11 @@ func init_values() -> void:
 		direction_vector = Vector2.DOWN
 		init_direction_vector = direction_vector
 		reset_direction()
-		return
-	direction_vector = Vector2.UP
-	init_direction_vector = direction_vector
-	reset_direction()
+	else: 
+		direction_vector = Vector2.UP
+		init_direction_vector = direction_vector
+		reset_direction()
+	deploy_unit()
 
 func set_collision_layers(): 
 	if team_node.name == "TEAM_ONE":
@@ -109,6 +114,8 @@ func _on_ranged_timer_timeout() -> void:
 	try_attack(ATTACK_MODES.RANGED)
 
 func try_attack(attack_mode: ATTACK_MODES):
+	if not is_deployed:
+		return
 	print("Trying to attack")
 	var target
 	if attack_mode == ATTACK_MODES.MELEE:

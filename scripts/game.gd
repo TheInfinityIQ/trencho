@@ -27,19 +27,23 @@ func init_spawns() -> void:
 func TEST_FAKE_UNITS(num: int, team: int) -> void:
 	for n in num:
 		var entity: Unit = unit.instantiate()
+		var team_node = $TEAM_ONE if team == 1 else $TEAM_TWO
 		if team == 1:
-			$TEAM_ONE.add_child(entity)
 			entity.global_position = team1Spawn.get_spawn_position()
-			continue
-		$TEAM_TWO.add_child(entity)
-		var pos: Vector2 = team2Spawn.get_spawn_position()
-		pos.y += map.get_tile_dimensions().height * map.get_tile_size() - (map.get_tile_dimensions().height * 0.2 * map.get_tile_size())
-		entity.global_position = pos
+		else:
+			var pos: Vector2 = team2Spawn.get_spawn_position()
+			pos.y += map.get_tile_dimensions().height * map.get_tile_size() - (map.get_tile_dimensions().height * 0.2 * map.get_tile_size())
+			entity.global_position = pos
+		add_node_to_team(entity, team_node)
+
+func add_node_to_team(child_node: Node, team_node: Node):
+	team_node.add_child(child_node)
+	pass
 
 func _on_team_1_spawn_timer_timeout() -> void:
 	print("spawning team 1")
-	TEST_FAKE_UNITS(randi_range(1, 5), 1)
+	TEST_FAKE_UNITS(randi_range(5, 15), 1)
 
 func _on_team_2_spawn_timer_timeout() -> void:
 	print("spawning team 2")
-	TEST_FAKE_UNITS(randi_range(1, 5), 2)
+	TEST_FAKE_UNITS(randi_range(5, 15), 2)
