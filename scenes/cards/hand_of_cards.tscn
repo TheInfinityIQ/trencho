@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://cg6ef1hytlsmc"]
+
+[ext_resource type="Script" uid="uid://bia81fuw2cv21" path="res://scripts/cards/hand_of_cards.gd" id="1_n0ui8"]
+
+[node name="HandOfCards" type="Control" unique_id=379054367]
+script = ExtResource("1_n0ui8")
+

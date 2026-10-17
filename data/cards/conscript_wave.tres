@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="BattleCard" load_steps=3 format=3]
+[ext_resource type="Script" path="res://scripts/systems/card_definition.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/cards/prototype/conscript.png" id="2"]
+[resource]
+script = ExtResource("1")
+card_id = "conscript_wave"
+display_name = "Conscript Wave"
+card_type = 0
+tags = PackedStringArray("Infantry", "Light")
+required_target_tags = PackedStringArray()
+command_cost = 2.0
+description = "12 inexpensive, fragile infantry"
+art = ExtResource("2")
+quantity = 12
+health = 75.0
+damage = 27.5
+melee_damage = 12.0
+melee_interval = 1.8
+move_speed = 250.0
+attack_interval = 1.1
+attack_range = 585.0
+multiplicative = {}

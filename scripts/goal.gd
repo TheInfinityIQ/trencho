@@ -1,21 +1,17 @@
 extends Area2D
 
-@onready var collision = $CollisionShape2D
+@onready var collision: CollisionShape2D = $CollisionShape2D
 var team_id: int
 
 func init(width_pixels, height_pixels, new_position, team) -> void:
-	self.position = new_position
-	
-	var rectShape: RectangleShape2D = RectangleShape2D.new()
-	rectShape.size = Vector2(width_pixels, height_pixels)
-	collision.shape = rectShape
-	
+	position = new_position
+	var rectangle := RectangleShape2D.new()
+	rectangle.size = Vector2(width_pixels, height_pixels)
+	collision.shape = rectangle
 	team_id = team
-	
-	if team_id == 1:
-		collision_mask = 4
-		return
-	collision_mask = 3
+	collision_layer = 0
+	collision_mask = 8 if team_id == 1 else 4
 
 func _on_body_entered(body: Node2D) -> void:
-	GameMaster.score_goal(team_id, 1)
+	if body is Unit and body.team_id != team_id and is_instance_valid(body.battle) and body.battle.crossed_score_line(body):
+		body.battle.score_unit(body)

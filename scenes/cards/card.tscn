@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://kwihvdjctkwt"]
+
+[ext_resource type="Script" uid="uid://cmqedgr1v3c0h" path="res://scripts/card.gd" id="1_45qsb"]
+[ext_resource type="Texture2D" uid="uid://bj31pb44kdf58" path="res://assets/cards/card_commander_test.png" id="2_0qqw3"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_g4v7s"]
+
+[node name="Card" type="Area2D" unique_id=521767060]
+script = ExtResource("1_45qsb")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=403409266]
+shape = SubResource("RectangleShape2D_g4v7s")
+debug_color = Color(0.9896454, 0, 0.29347393, 0.41960785)
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=2052871537]
+scale = Vector2(5, 5)
+texture = ExtResource("2_0qqw3")
+
+[connection signal="mouse_entered" from="." to="." method="_on_mouse_entered"]
+[connection signal="mouse_exited" from="." to="." method="_on_mouse_exited"]

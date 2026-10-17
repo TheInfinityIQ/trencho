@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="BattleCard" load_steps=3 format=3]
+[ext_resource type="Script" path="res://scripts/systems/card_definition.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/cards/prototype/assault_team.png" id="2"]
+[resource]
+script = ExtResource("1")
+card_id = "assault_squad"
+display_name = "Assault Squad"
+card_type = 0
+tags = PackedStringArray("Infantry", "Light")
+required_target_tags = PackedStringArray()
+command_cost = 4.0
+description = "4 fast, strong infantry"
+art = ExtResource("2")
+quantity = 4
+health = 225.0
+damage = 25.6
+melee_damage = 35.0
+melee_interval = 1.1
+move_speed = 420.0
+attack_interval = 0.32
+attack_range = 400.0
+multiplicative = {}

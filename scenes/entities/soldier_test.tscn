@@ -52,16 +52,9 @@ position = Vector2(0, -1)
 shape = SubResource("CircleShape2D_xjuyx")
 debug_color = Color(0.899061, 0.18719465, 0.62835115, 0.41960785)
 
-[node name="MeleeTimer" type="Timer" parent="." unique_id=2120711403]
 
-[node name="RangedTimer" type="Timer" parent="." unique_id=548193913]
 
 [node name="RangedArea2D" type="Area2D" parent="." unique_id=187610181]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RangedArea2D" unique_id=960497589]
 shape = SubResource("CircleShape2D_tmn6a")
-
-[connection signal="body_entered" from="MeleeArea2D" to="." method="_on_body_entered_melee_area"]
-[connection signal="timeout" from="MeleeTimer" to="." method="_on_melee_timer_timeout"]
-[connection signal="timeout" from="RangedTimer" to="." method="_on_ranged_timer_timeout"]
-[connection signal="body_entered" from="RangedArea2D" to="." method="_on_body_entered_ranged_area"]

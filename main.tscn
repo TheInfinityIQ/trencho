@@ -1,10 +1,8 @@
 [gd_scene format=3 uid="uid://ulcwlecnrkim"]
 
-[ext_resource type="Script" uid="uid://ccfyd1thlvbdh" path="res://scripts/game.gd" id="1_1bvp3"]
-[ext_resource type="PackedScene" uid="uid://comduwpd7rq5v" path="res://scenes/maps/map_test.tscn" id="1_ig7tw"]
-[ext_resource type="PackedScene" uid="uid://cguuonyqx5ac6" path="res://scenes/ui/hand_of_cards.tscn" id="3_h2yge"]
+[ext_resource type="Script" uid="uid://chqr6j0b8fh2v" path="res://scripts/game.gd" id="1_1bvp3"]
+[ext_resource type="PackedScene" path="res://scenes/maps/map_test.tscn" id="1_ig7tw"]
 [ext_resource type="PackedScene" uid="uid://h8pk60l2lp16" path="res://scenes/special/spawn.tscn" id="3_lquwl"]
-[ext_resource type="PackedScene" uid="uid://btt3ujk2mw5sb" path="res://scenes/ui/Score.tscn" id="5_lquwl"]
 
 [node name="Main" type="Node2D" unique_id=1095361808]
 script = ExtResource("1_1bvp3")
@@ -23,25 +21,3 @@ zoom = Vector2(0.2, 0.2)
 [node name="TEAM_TWO" type="Node" parent="." unique_id=1339901163]
 
 [node name="Spawn" parent="TEAM_TWO" unique_id=458815835 instance=ExtResource("3_lquwl")]
-
-[node name="HandOfCards" parent="." unique_id=1346604646 instance=ExtResource("3_h2yge")]
-offset_left = 3330.0002
-offset_top = 2339.0002
-offset_right = 3330.0002
-offset_bottom = 2339.0002
-scale = Vector2(4.6515436, 4.6515436)
-
-[node name="Score" parent="." unique_id=1111028171 instance=ExtResource("5_lquwl")]
-offset_left = 3310.0
-offset_right = 3310.0
-
-[node name="Team1SpawnTimer" type="Timer" parent="." unique_id=393950997]
-wait_time = 3.0
-autostart = true
-
-[node name="Team2SpawnTimer" type="Timer" parent="." unique_id=1614581178]
-wait_time = 3.0
-autostart = true
-
-[connection signal="timeout" from="Team1SpawnTimer" to="." method="_on_team_1_spawn_timer_timeout"]
-[connection signal="timeout" from="Team2SpawnTimer" to="." method="_on_team_2_spawn_timer_timeout"]

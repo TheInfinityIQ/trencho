@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BattleCard" load_steps=3 format=3]
+[ext_resource type="Script" path="res://scripts/systems/card_definition.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/cards/prototype/rifle_squad.png" id="2"]
+[resource]
+script = ExtResource("1")
+card_id = "rifle_squad"
+display_name = "Rifle Squad"
+card_type = 0
+tags = PackedStringArray("Infantry", "Light")
+required_target_tags = PackedStringArray()
+command_cost = 3.0
+description = "6 general infantry"
+art = ExtResource("2")
+quantity = 6
+health = 100.0
+damage = 45.0
+move_speed = 300.0
+attack_interval = 0.75
+attack_range = 650.0
+multiplicative = {}
