@@ -27,6 +27,10 @@ var resize_scale := 1.0
 var resize_start_box := Rect2()
 var resize_axes := Vector2.ONE
 var resize_sign := Vector2.ONE
+var live_recognition: Dictionary = {}
+var preview_target := -1
+var preview_projection: Dictionary = {}
+var recognized_samples := -1
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -51,6 +55,7 @@ func _build_blueprint() -> void:
 	package_label.position = Vector2(24, 16)
 	package_label.size = Vector2(570, 100)
 	package_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	package_label.add_theme_font_size_override("font_size",14)
 	content.add_child(package_label)
 	blueprint_preview = Control.new()
 	blueprint_preview.position = Vector2(24, 120)
@@ -58,7 +63,7 @@ func _build_blueprint() -> void:
 	blueprint_preview.draw.connect(_draw_blueprint)
 	content.add_child(blueprint_preview)
 	var confirm := Button.new()
-	confirm.text = "Use formation → draw an order"
+	confirm.text = "Use formation -> draw an order"
 	confirm.position = Vector2(24, 405)
 	confirm.size = Vector2(370, 40)
 	confirm.pressed.connect(confirm_blueprint)
@@ -96,13 +101,16 @@ func set_blueprint_size(width: float, depth: float) -> void:
 	_update_blueprint()
 
 func _update_blueprint() -> void:
-	pending_rectangle = Rect2(clampf(entry_center_x - blueprint_width * 0.5, 0, game.field_size.x - blueprint_width), 0, blueprint_width, blueprint_depth)
+	pending_rectangle = Rect2(clampf(entry_center_x-blueprint_width*0.5,0,game.field_size.x-blueprint_width),0,blueprint_width,blueprint_depth)
 	var resolved: Dictionary = game.deployment_manager.resolve_package(pending_cards)
 	if not resolved.is_valid: return
-	var names: Array[String] = []
-	for card in pending_cards: names.append(card.display_name)
-	var capacity: int = game.formation_manager.generate_slots(pending_rectangle, 2).size()
-	package_label.text = "SQUAD BLUEPRINT\n%s\n%d soldiers · %.0f Command · %.0f × %.0f formation · %d spaces\nDrag a corner or edge to resize. No cards or Command spent yet." % [" + ".join(names), resolved.resolved_deployment.quantity, resolved.total_cost, blueprint_width, blueprint_depth, capacity]
+	var composition: Array[String] = []
+	var modifiers: Array[String] = []
+	for component in resolved.resolved_deployment.components: composition.append("%s ×%d" % [component.unit_type.replace("_"," ").capitalize(),component.quantity])
+	for card in pending_cards:
+		if card.card_type == BattleCard.Type.MODIFIER: modifiers.append(card.display_name)
+	var capacity: int = game.formation_manager.generate_slots(pending_rectangle,2).size()
+	package_label.text = "SQUAD BLUEPRINT · first Unit = front priority\n%s\nModifiers: %s | Total %d · %.0f Command\n%.0f × %.0f · %d spaces · Drag edges/corners. Nothing spent." % [" + ".join(composition),", ".join(modifiers) if not modifiers.is_empty() else "None",resolved.resolved_deployment.quantity,resolved.total_cost,blueprint_width,blueprint_depth,capacity]
 	blueprint_preview.queue_redraw()
 
 func _blueprint_handles() -> Array:
@@ -174,8 +182,13 @@ func _draw_blueprint() -> void:
 	for handle in _blueprint_handles():
 		blueprint_preview.draw_rect(Rect2(handle.point - Vector2.ONE * 4, Vector2.ONE * 8), Color.WHITE)
 	positions = game.formation_manager.choose_slots(2, pending_rectangle, mini(count, positions.size()), positions)
-	for point in positions:
-		blueprint_preview.draw_circle(blueprint_box.position + (point-pending_rectangle.position) * _blueprint_scale(), maxf(2,game.tuning.unit_radius*_blueprint_scale()), color)
+	var specification: Dictionary = resolved.resolved_deployment
+	specification.spawn_positions = positions
+	game.deployment_manager.assign_components(specification)
+	for index in range(positions.size()):
+		var point: Vector2 = positions[index]
+		var type_color := color if specification.member_components[index] == 0 else Color(1,0.85,0.5)
+		blueprint_preview.draw_circle(blueprint_box.position + (point-pending_rectangle.position) * _blueprint_scale(), maxf(2,game.tuning.unit_radius*_blueprint_scale()), type_color)
 func confirm_blueprint() -> void:
 	_update_blueprint()
 	var resolved: Dictionary = game.deployment_manager.validate_squad(2, pending_cards, pending_rectangle, "ADVANCE")
@@ -194,6 +207,11 @@ func knob_position() -> Vector2:
 	return screen.clamp(allowed.position, allowed.end)
 
 func begin_gesture(point: Vector2) -> void:
+	game.hand.has_footprint = false
+	game.hand.drawing_footprint = false
+	game.hand.pressed_index = -1
+	game.hand.dragged_index = -1
+	game.clear_footprint()
 	gesture_active = true
 	game.camera_panning = false
 	stroke = PackedVector2Array([point])
@@ -205,28 +223,36 @@ func finish_gesture() -> Dictionary:
 	gesture_active = false
 	gesture_debug = RECOGNIZER.classify(stroke)
 	if not gesture_debug.success:
-		return fail("UNRECOGNIZED_GESTURE", gesture_origin)
+		return fail(gesture_debug.failure_reason, gesture_origin)
 	var kind: String = gesture_debug.command_type
+	var route := PackedVector2Array()
+	for index in range(1,gesture_debug.route.size()): route.append(game.screen_to_battle(gesture_debug.route[index]))
 	var center: Vector2 = game.screen_to_battle(gesture_debug.center)
 	var radius: float = gesture_debug.radius / game.get_node("Camera2D").zoom.x
 	var result: Dictionary
 	if pending_ready:
 		if game.hand.selected_cards() != pending_cards:
 			return fail("INVALID_CARD", gesture_origin)
-		var deployment: Dictionary = game.deployment_manager.request_squad(2, pending_cards, pending_rectangle, kind, center, radius)
+		var deployment: Dictionary = game.deployment_manager.request_squad(2, pending_cards, pending_rectangle, kind, center, radius, route)
 		if not deployment.is_valid: return fail(deployment.failure_reason, center)
 		result = deployment.command_result
 		game.hand._consume(game.hand.selected_indices)
 		pending_cards.clear()
 		pending_ready = false
 	else:
-		result = game.squad_commands.issue_selected(kind, center, radius)
+		result = game.squad_commands.issue_selected(kind, center, radius, route)
 	stroke.clear()
 	had_command_selection = false
 	game.planning.end()
 	return result
 
 func fail(reason: String, origin: Vector2) -> Dictionary:
+	gesture_active = false
+	had_command_selection = false
+	game.hand.has_footprint = false
+	game.hand.drawing_footprint = false
+	game.clear_footprint()
+	game.planning.end()
 	failure_reason = reason
 	var result: Dictionary = game.squad_commands.result(false, "", reason)
 	feedback.append({"result": result, "origin": origin, "age": 0.0, "end": origin})
@@ -268,6 +294,10 @@ func close_all() -> void:
 
 func _input(event: InputEvent) -> void:
 	if not game.battle_active: return
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+		cancel_current()
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_ESCAPE:
 			cancel_current()
@@ -327,6 +357,26 @@ func _notification(what: int) -> void:
 func _process(_delta: float) -> void:
 	var now := Time.get_ticks_usec()
 	var real_delta := minf(0.1, float(now - frame_time) / 1000000.0)
+	if gesture_active and stroke.size() != recognized_samples:
+		recognized_samples = stroke.size()
+		live_recognition = RECOGNIZER.classify(stroke)
+		preview_target = -1
+		preview_projection = {}
+		if live_recognition.success and not stroke.is_empty():
+			preview_target = game.squad_commands.points.point_at(2,game.screen_to_battle(stroke[-1]))
+			if preview_target >= 0:
+				var extra := 0
+				if pending_ready:
+					extra = game.deployment_manager.resolve_package(pending_cards).resolved_deployment.quantity
+				else:
+					for squad in game.squad_commands.selected_squads():
+						if squad.order_id != preview_target: extra += game.squad_commands.count_members(squad)
+				preview_projection = game.squad_commands.points.projection(preview_target,extra)
+	else:
+		if not gesture_active:
+			preview_target = -1
+			preview_projection = {}
+			recognized_samples = -1
 	frame_time = now
 	blueprint.position = (get_viewport_rect().size - blueprint.size) * 0.5
 	if had_command_selection and game.planning.active and game.squad_commands.selected_squads().is_empty():
@@ -358,7 +408,7 @@ func _draw() -> void:
 		draw_line(Vector2(zone.position.x, zone.end.y), zone.end, Color(1, 0.8, 0.4, planning_alpha), 2)
 		for x in range(floori(zone.position.x), ceili(zone.end.x), 22):
 			draw_line(Vector2(x, zone.position.y), Vector2(minf(x + zone.size.y, zone.end.x), zone.end.y), Color(1, 0.8, 0.4, 0.25 * planning_alpha))
-		draw_string(ThemeDB.fallback_font, Vector2(maxf(20, zone.position.x + 12), maxf(110, zone.end.y - 12)), "NO-HOLD  /  Defend prohibited · Advance allowed", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 0.9, 0.6, planning_alpha))
+		draw_string(ThemeDB.fallback_font, Vector2(maxf(20, zone.position.x + 12), maxf(110, zone.end.y - 12)), "NO-HOLD  /  Defend prohibited  |  Advance allowed", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 0.9, 0.6, planning_alpha))
 	for squad in game.squad_commands.squads.values():
 		if squad.team != 2: continue
 		if squad.selected:
@@ -367,17 +417,37 @@ func _draw() -> void:
 				for event in feedback:
 					if event.result.success and event.result.affected_squad_ids.has(squad.squad_id): pulse = maxf(pulse, maxf(0, 1 - event.age / 0.45))
 				draw_arc(transform * unit.global_position, maxf(9, (game.tuning.unit_radius + 14) * zoom), 0, TAU, 32, Color.WHITE, 2.5 + pulse * 3, true)
-		if squad.intent == "DEFEND":
-			var color := Color(0.5, 0.85, 1, 0.65 if squad.selected else 0.12)
-			draw_arc(transform * squad.defense_center, squad.defense_radius * zoom, 0, TAU, 64, color, 2, true)
-			SYMBOLS.shield_icon(self, transform * squad.defense_center, 10, color)
+	for id in game.squad_commands.orders:
+		var point: Dictionary = game.squad_commands.orders[id]
+		var selected := false
+		for squad_id in point.squads:
+			if game.squad_commands.selected_ids.has(squad_id): selected = true
+		var color := Color(0.5,0.85,1,0.7 if selected else 0.20) if point.team == 2 else Color(1,0.45,0.35,0.4)
+		_draw_territory(point.cells,color,transform)
+		SYMBOLS.shield_icon(self,transform*point.center,10,color)
+		if point.lifecycle == "PENDING":
+			draw_string(ThemeDB.fallback_font,transform*point.center+Vector2(12,4),"Inbound",HORIZONTAL_ALIGNMENT_LEFT,-1,12,color)
+	if gesture_active and preview_target >= 0 and game.squad_commands.orders.has(preview_target):
+		var point: Dictionary = game.squad_commands.orders[preview_target]
+		draw_circle(transform*point.center,point.radius*zoom+20,Color(0,0,0,0.18))
+		_draw_territory(point.cells,Color(0.6,0.9,1,0.8),transform)
+		_draw_territory(preview_projection.get("cells",{}),Color(0.6,0.9,1,0.25),transform)
+		var label := "Reinforce position"
+		if preview_projection.get("warning",false): label += "  |  Capacity risk"
+		draw_string(ThemeDB.fallback_font,transform*point.center+Vector2(15,-20),label,HORIZONTAL_ALIGNMENT_LEFT,-1,16,Color(1,0.85,0.5))
+	elif gesture_active and live_recognition.get("success",false) and live_recognition.command_type == "DEFEND":
+		SYMBOLS.shield_icon(self,live_recognition.center,15,Color(0.65,0.95,1,0.7))
 	if (pending_ready or not game.squad_commands.selected_ids.is_empty()) and not blueprint.visible:
 		var knob := knob_position()
 		draw_circle(knob, 18, Color(0.05, 0.12, 0.18))
 		draw_arc(knob, 18, 0, TAU, 32, Color.WHITE, 3, true)
 		draw_line(knob - Vector2(7, 0), knob + Vector2(7, 0), Color.WHITE, 2)
 		draw_line(knob - Vector2(0, 7), knob + Vector2(0, 7), Color.WHITE, 2)
-	if stroke.size() > 1: draw_polyline(stroke, Color(1, 1, 1, 0.9), 3, true)
+	if stroke.size() > 1:
+		draw_polyline(stroke, Color(1, 1, 1, 0.65), 2, true)
+		if live_recognition.get("success",false) and live_recognition.route.size() > 1:
+			draw_polyline(live_recognition.route,Color(0.6,0.9,1,0.6),4,true)
+			_arrow(live_recognition.route[-2],live_recognition.route[-1],Color.WHITE,2)
 	for event in feedback:
 		var result: Dictionary = event.result
 		var alpha: float = clampf(1 - event.age / 1.8, 0, 1)
@@ -392,9 +462,26 @@ func _draw() -> void:
 		elif result.command_type == "DEFEND":
 			var center: Vector2 = transform * result.defense_center
 			var pulse: float = 1 + 0.06 * sin(minf(event.age / 0.4, 1) * PI)
-			draw_arc(center, result.defense_radius * zoom * pulse, 0, TAU, 64, Color(0.6, 0.95, 1, alpha), 3, true)
+			draw_arc(center, 22 * pulse, 0, TAU, 32, Color(0.6, 0.95, 1, alpha), 3, true)
 			SYMBOLS.shield_icon(self, center, 14, Color(1, 1, 1, alpha))
 			_arrow(origin, center, Color(1, 1, 1, alpha))
 		else:
-			_arrow(origin, transform * event.end, Color(1, 1, 1, alpha), 4)
+			var route: PackedVector2Array = result.get("route",PackedVector2Array())
+			if route.size() > 1:
+				var path := PackedVector2Array()
+				for point in route: path.append(transform*point)
+				draw_polyline(path,Color(1,1,1,alpha),3,true)
+			else: _arrow(origin, transform * event.end, Color(1, 1, 1, alpha), 4)
 
+
+
+func _draw_territory(cells: Dictionary, color: Color, transform: Transform2D) -> void:
+	var service = game.squad_commands.points
+	var size: float = service.cell_size()
+	for cell in cells:
+		var start: Vector2 = Vector2(cell)*size
+		var corners := PackedVector2Array([transform*start,transform*(start+Vector2(size,0)),transform*(start+Vector2(size,size)),transform*(start+Vector2(0,size))])
+		draw_colored_polygon(corners,Color(color,color.a*0.12))
+		var neighbors := [Vector2i.UP,Vector2i.RIGHT,Vector2i.DOWN,Vector2i.LEFT]
+		for index in range(4):
+			if not cells.has(cell+neighbors[index]): draw_line(corners[index],corners[(index+1)%4],color,2,true)

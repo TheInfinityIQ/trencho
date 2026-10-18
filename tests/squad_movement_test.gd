@@ -60,6 +60,8 @@ func run() -> void:
 		await physics_frame
 		settled = game.units.all(func(unit): return unit.state == Unit.State.DEFENDING and unit.position.distance_to(unit.squad.defense_positions[unit.squad_member_index]) <= 10)
 		if settled: break
+	if not settled:
+		for unit in game.units: print("REFORM ",unit.position," home ",unit.squad.defense_positions.get(unit.squad_member_index)," established ",unit.defense_established," state ",unit.state," in ",game.squad_commands.inside_defense(unit.squad,unit.position))
 	check(settled and game.units.size()==8,"mixed survivors return to recalculated positions after casualties")
 	check(game.squad_commands.selected_ids==kept_ids,"casualties preserve separate selected squad identities")
 	game.finish_battle(2,"movement test completed")

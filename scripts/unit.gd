@@ -2,7 +2,7 @@ extends CharacterBody2D
 class_name Unit
 
 signal died(unit: Unit)
-enum State { ADVANCING, ENGAGING, DEAD, ENTERING_BATTLEFIELD, CAPTURING, EXITING, MOVING_TO_DEFEND, DEFENDING, RETURNING_TO_DEFENSE }
+enum State { ADVANCING, ENGAGING, DEAD, ENTERING_BATTLEFIELD, CAPTURING, EXITING, MOVING_TO_DEFEND, DEFENDING, RETURNING_TO_DEFENSE, RETREATING }
 var state: State = State.ADVANCING
 var team_id: int = 2
 var lane_id: int = 1
@@ -106,12 +106,15 @@ func _physics_process(delta: float) -> void:
 		return
 	spawn_age += delta
 	_update_entry_status()
+	if squad != null and squad.retreating:
+		_retreat_tick(delta)
+		return
 	if squad != null and squad.intent == "DEFEND":
 		attack_remaining = maxf(0, attack_remaining - delta)
 		_defend_tick(delta)
 		_update_entry_status()
 		return
-	if is_instance_valid(battle) and battle.crossed_capture_threshold(self):
+	if is_instance_valid(battle) and (squad == null or squad.route_waypoints.is_empty() or not squad.route_target(self).is_finite()) and battle.crossed_capture_threshold(self):
 		state = State.CAPTURING
 	if state == State.CAPTURING:
 		target = null
@@ -130,7 +133,23 @@ func _physics_process(delta: float) -> void:
 		is_attacking = false
 		state = State.ADVANCING if has_entered_battlefield else State.ENTERING_BATTLEFIELD
 		rotation = PI if team_id == 1 else 0.0
-		velocity = direction_vector * move_speed
+		var route_target: Vector2 = squad.route_target(self) if squad != null and has_entered_battlefield else Vector2.INF
+		var strategic: float = squad.strategic_speed if squad != null and squad.strategic_speed > 0 else move_speed
+		var combat_target: Unit = _cohesion_enemy()
+		var next_position: Vector2 = route_target if route_target.is_finite() else global_position+direction_vector*300
+		var interception: Unit = battle.squad_commands.intercepted_enemy(self,next_position) if squad != null else null
+		if interception != null: combat_target = interception
+		if combat_target != null:
+			var approach: Vector2 = combat_target.global_position + combat_target.global_position.direction_to(global_position)*maxf(melee_range,attack_range*0.85)
+			if interception != null or approach.distance_to(squad.combat_center) <= battle.tuning.cohesion_leash:
+				state = State.ENGAGING
+				_move_defender(approach,delta)
+				return
+		if route_target.is_finite():
+			_move_defender(route_target,delta,strategic)
+			_update_entry_status()
+			return
+		velocity = direction_vector * strategic
 		if is_instance_valid(battle) and not battle.formation_manager.can_move_to(global_position + velocity * delta, self):
 			velocity = Vector2.ZERO
 		else:
@@ -167,6 +186,7 @@ func _update_entry_status() -> void:
 func apply_damage(amount: float) -> void:
 	if not is_alive():
 		return
+	if squad != null and squad.retreating: amount *= battle.tuning.rout_damage_multiplier
 	current_health = maxf(0, current_health - amount)
 	update_health_bar()
 	if current_health <= 0:
@@ -210,7 +230,7 @@ func _base_debug_description() -> String:
 	return "%s | Team %d | %s\nInterval base %.3fs / spawned %.3fs\nSpeed base %.1f / spawned %.1f | Range %.0f\nTarget: %s\nEntry origin: %s | On field: %s\nQueue wait %.2fs | Since spawn %.2fs | Entry total %.2fs\nCapturing: %s" % [unit_type, team_id, State.keys()[state], base_attack_interval, attack_interval, base_move_speed, move_speed, attack_range, str(target.get_instance_id()) if is_instance_valid(target) else "none", assigned_formation_slot, has_entered_battlefield, queue_wait, spawn_age, entry_elapsed, state == State.CAPTURING]
 
 func _defense_target_allowed(enemy: Unit) -> bool:
-	return squad == null or squad.intent != "DEFEND" or not defense_established or enemy.global_position.distance_to(squad.defense_center) <= squad.defense_radius
+	return squad == null or squad.intent != "DEFEND" or not defense_established or battle.squad_commands.inside_defense(squad,enemy.global_position)
 
 func _fire_at_target() -> void:
 	state = State.ENGAGING
@@ -221,16 +241,20 @@ func _fire_at_target() -> void:
 		var melee: bool = $MeleeArea2D.get_overlapping_bodies().has(target)
 		attack_remaining = melee_interval if melee else attack_interval
 		if not melee: spawn_smoke_at_weapon(global_position.direction_to(target.global_position))
-		target.apply_damage(attack_melee_strength if melee else attack_ranged_strength)
+		battle.squad_commands.record_damage(self,target)
+		var multiplier: float = battle.tuning.breakthrough_damage_multiplier if squad != null and squad.breakthrough_remaining > 0 else 1.0
+		target.apply_damage((attack_melee_strength if melee else attack_ranged_strength)*multiplier)
 
 func _defend_tick(delta: float) -> void:
 	var destination: Vector2 = squad.defense_positions.get(squad_member_index, squad.defense_center)
+	var waypoint: Vector2 = squad.route_target(self) if has_entered_battlefield else Vector2.INF
+	if waypoint.is_finite(): destination = waypoint
 	target = nearest_enemy()
 	if is_instance_valid(target):
 		_fire_at_target()
 		return
 	is_attacking = false
-	if not defense_established and global_position.distance_to(destination) <= 10:
+	if not waypoint.is_finite() and not defense_established and global_position.distance_to(destination) <= 10:
 		defense_established = true
 	if defense_established:
 		var distance := INF
@@ -243,7 +267,7 @@ func _defend_tick(delta: float) -> void:
 		if is_instance_valid(target):
 			state = State.ENGAGING
 			var approach: Vector2 = target.global_position + target.global_position.direction_to(global_position) * maxf(melee_range, attack_range * 0.8)
-			approach = squad.defense_center + (approach - squad.defense_center).limit_length(maxf(0, squad.defense_radius - battle.tuning.unit_radius))
+			if not battle.squad_commands.inside_defense(squad,approach): approach = destination
 			_move_defender(approach, delta)
 			return
 	state = State.RETURNING_TO_DEFENSE if defense_established else State.MOVING_TO_DEFEND
@@ -251,11 +275,12 @@ func _defend_tick(delta: float) -> void:
 		state = State.DEFENDING
 		velocity = Vector2.ZERO
 	else:
-		_move_defender(destination, delta)
+		var speed: float = move_speed if defense_established else (squad.strategic_speed if squad.strategic_speed > 0 else move_speed)
+		_move_defender(destination, delta, speed)
 
-func _move_defender(destination: Vector2, delta: float) -> void:
+func _move_defender(destination: Vector2, delta: float, speed: float = -1) -> void:
 	var displacement := destination - global_position
-	var step := minf(move_speed * delta, displacement.length())
+	var step := minf((move_speed if speed < 0 else speed) * delta, displacement.length())
 	var direction := displacement.normalized()
 	velocity = Vector2.ZERO
 	# Bounded local steering only: no grid, graph search or navigation agent.
@@ -266,11 +291,11 @@ func _move_defender(destination: Vector2, delta: float) -> void:
 	for angle in [0.0, side * 0.65, side * 1.2, side * 1.57, side * 2.1, -side * 0.65, -side * 1.2]:
 		var heading := direction.rotated(angle)
 		var proposed := global_position + heading * step
-		if defense_established and proposed.distance_to(squad.defense_center) + battle.tuning.unit_radius > squad.defense_radius + 0.01: continue
+		if defense_established and battle.squad_commands.inside_defense(squad,global_position) and not battle.squad_commands.inside_defense(squad,proposed): continue
 		if not battle.formation_manager.can_move_to(proposed, self): continue
 		if fallback == Vector2.ZERO: fallback = heading
 		var probe := global_position + heading * lookahead
-		if defense_established and probe.distance_to(squad.defense_center) + battle.tuning.unit_radius > squad.defense_radius: continue
+		if defense_established and battle.squad_commands.inside_defense(squad,global_position) and not battle.squad_commands.inside_defense(squad,probe): continue
 		if battle.formation_manager.can_move_to(probe, self):
 			fallback = heading
 			if absf(angle) > 0.1: defense_avoid_side = signf(angle)
@@ -291,3 +316,32 @@ func _notification(what: int) -> void:
 		battle.formation_manager.track_unit(self)
 	elif what == NOTIFICATION_EXIT_TREE:
 		battle.formation_manager.untrack_unit(self)
+
+
+func _cohesion_enemy() -> Unit:
+	if squad == null or not has_entered_battlefield: return null
+	var best: Unit = null
+	var distance := INF
+	# Share one combat-neighborhood lookup per squad per physics tick.
+	for enemy in squad.combat_candidates:
+		if not is_instance_valid(enemy) or not enemy.is_alive(): continue
+		var candidate: float = global_position.distance_squared_to(enemy.global_position)
+		if candidate < distance:
+			distance = candidate
+			best = enemy
+	return best
+
+func _retreat_tick(delta: float) -> void:
+	state = State.RETREATING
+	target = null
+	is_attacking = false
+	attack_remaining = maxf(0,attack_remaining-delta)
+	var home_y: float = battle.field_size.y-200 if team_id == 2 else 200
+	var advance_speed: float = squad.strategic_speed if squad.strategic_speed > 0 else move_speed
+	_move_defender(Vector2(global_position.x,home_y),delta,advance_speed*battle.tuning.rout_speed_multiplier)
+	var recovered: bool = true
+	for member in squad.living_members():
+		if (member.global_position.y < home_y-15 if team_id == 2 else member.global_position.y > home_y+15): recovered = false
+	if recovered:
+		squad.retreating = false
+		for member in squad.living_members(): member.state = State.ADVANCING

@@ -37,6 +37,20 @@ class_name BattleTuning
 @export_range(0.3, 0.6) var exit_fade_duration: float = 0.45
 
 @export_group("Squad orders")
+@export var territory_cell_size: float = 160.0
+@export var defense_area_margin: float = 1.20
+@export var territory_update_interval: float = 0.25
+@export var breakthrough_contribution_window: float = 12.0
+@export var cohesion_leash: float = 800.0
+@export var rout_speed_multiplier: float = 1.5
+@export var rout_damage_multiplier: float = 1.25
+@export var breakthrough_heal_fraction: float = 0.10
+@export var breakthrough_damage_multiplier: float = 1.15
+@export var breakthrough_duration: float = 8.0
+@export var breakthrough_duration_cap: float = 2.0
+@export_enum("RANDOM", "LINE", "TRIANGLE") var enemy_doctrine: String = "RANDOM"
+@export var enemy_defense_depth: float = 2000.0
+@export var enemy_apex_extra_depth: float = 650.0
 @export_range(160, 600) var defense_spacing: float = 320.0
 @export_range(70, 600) var minimum_defense_radius: float = 140.0
 @export_range(600, 3000) var maximum_defense_radius: float = 1800.0

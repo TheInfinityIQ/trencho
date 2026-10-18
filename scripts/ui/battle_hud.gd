@@ -113,6 +113,7 @@ func _update_debug() -> void:
 		"Last rejection: " + game.last_rejection,
 		"", "ENEMY", "Next decision: %.2fs" % enemy.remaining,
 		"Decision: " + enemy.last_decision,
+		"Doctrine: %s | Cooldown %.2f | Reinforce %s" % [enemy.doctrine,enemy.deployment_cooldown,enemy.reinforcement_priority],
 		"Chosen lane: %d / %s" % [enemy.chosen_lane + 1, enemy.chosen_deployment],
 		"Open lanes: " + str(enemy.last_open),
 		"Player lane strengths: " + str(enemy.last_strengths),
@@ -177,6 +178,9 @@ Clock: queued | Arrow: entry/advance | Crosshair: combat")
 	lines.append("Gesture: " + str(game.command_ui.gesture_debug) + " | Failure: " + game.command_ui.failure_reason)
 	for squad in game.squad_commands.squads.values():
 		lines.append("Squad %d %s | %s | living %d | order %d | center %s r %.0f" % [squad.squad_id, squad.unit_type, squad.intent, squad.living_members().size(), squad.order_id, squad.defense_center, squad.defense_radius])
+	for id in game.squad_commands.orders:
+		var point: Dictionary = game.squad_commands.orders[id]
+		lines.append("Point %d %s | established %d inbound %d | area %.0f/%.0f | %s | pressure %.1f | anchors %s | neighbors %s" % [id,point.lifecycle,point.established,point.inbound,point.actual_area,point.desired_area,point.capacity_state,point.pressure,point.anchors,point.neighbors])
 	debug_panel.text = "\n".join(lines)
 
 func _on_battle_ended(winner: int, reason: String) -> void:

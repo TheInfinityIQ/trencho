@@ -1,6 +1,6 @@
 # Trencho mechanics prototype
 
-Current interaction contract: [Squad Command & Planning v0.1](Trencho_Squad_Command_Planning_Gesture_System_v0.1.md). This supersedes the old player deployment-zone/exclusion and battlefield rectangle interaction. Formation, collision, economy and scoring still use shared systems for both teams.
+Current interaction contract: [Drawn Commands v0.2](DRAWN_COMMAND_V02_IMPLEMENTATION.md). The sections below record the v0.1 baseline; the linked v0.2 document supersedes one-Unit, straight-line and fixed-circle assumptions. This supersedes the old player deployment-zone/exclusion and battlefield rectangle interaction. Formation, collision, economy and scoring still use shared systems for both teams.
 
 ## Playing
 

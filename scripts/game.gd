@@ -135,7 +135,7 @@ func _physics_process(delta: float) -> void:
 	for economy in economies.values():
 		economy.tick(delta)
 	formation_manager.tick(delta)
-	squad_commands.tick()
+	squad_commands.tick(delta)
 	refresh_occupancy()
 	_check_deployment_lock(delta)
 	if battle_active and tuning.enemy_enabled:
@@ -457,9 +457,15 @@ func deployment_message(reason: String) -> String:
 func spawn_reinforcement(slot: Dictionary, spawn_point: Vector2) -> Unit:
 	var soldier: Unit = UNIT.instantiate()
 	soldier.position = spawn_point
-	soldier.configure(self, slot.specification, lane_for_x(slot.position.x))
+	var individual: Dictionary = slot.specification.duplicate()
+	if individual.has("components"):
+		individual.merge(individual.components[individual.member_components[slot.member_index]],true)
+	soldier.configure(self, individual, lane_for_x(slot.position.x))
 	soldier.squad_member_index = slot.member_index
 	soldier.squad.members.append(soldier)
+	if not soldier.squad.route_offsets.has(slot.member_index):
+		var entry_front: float = slot.specification.spawn_positions[0].y
+		soldier.squad.route_offsets[slot.member_index] = Vector2(slot.position.x-slot.rectangle.get_center().x,slot.position.y-entry_front)
 	soldier.assigned_formation_slot = spawn_point
 	soldier.queue_wait = formation_manager.elapsed - slot.ordered_at
 	soldier.reservation_id = slot.id
@@ -468,6 +474,7 @@ func spawn_reinforcement(slot: Dictionary, spawn_point: Vector2) -> Unit:
 	var team: Node = $TEAM_ONE if slot.team == 1 else $TEAM_TWO
 	team.add_child(soldier)
 	units.append(soldier)
+	soldier.squad.refresh_travel()
 	formation_manager.track_unit(soldier)
 	squad_commands.invalidate_enemy_cache()
 	unit_spawned.emit(soldier)

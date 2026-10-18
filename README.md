@@ -6,7 +6,7 @@ Single-player PC mechanics prototype combining card deployments with autonomous 
 
 Use **Godot 4.7.2 stable**, standard edition (no .NET dependency). The verification version is recorded in `.godot-version`. Steam's `stable-4.7` branch can receive patch updates; update the version file only after running compatibility checks with the new patch.
 
-The current interaction is card package → squad blueprint → a line (Advance) or loop (Defend) from one order knob. Click soldiers to select whole squads; Shift modifies multi-selection.
+The current interaction is a three-card package (one or two Units) → squad blueprint → a curved route, full Defend loop or route into a friendly Defensive Area from one order knob. See [v0.2 controls and systems](docs/DRAWN_COMMAND_V02_IMPLEMENTATION.md). Click soldiers to select whole squads; Shift modifies multi-selection.
 
 Import `project.godot` in Godot and run `main.tscn`. See [prototype controls, rules and tuning](docs/PROTOTYPE.md).
 

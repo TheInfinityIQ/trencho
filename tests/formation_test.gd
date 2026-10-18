@@ -58,8 +58,8 @@ func _run() -> void:
 	player.tick(100)
 	check(player.current_command == 10, "Command capped")
 	check(manager.resolve_package([mojo]).failure_reason == "NO_UNIT_CARD", "Modifiers alone cannot deploy")
-	check(manager.resolve_package([rifle, rifle]).failure_reason == "MULTIPLE_UNIT_CARDS", "Exactly one Unit")
-	check(manager.resolve_package([rifle, mojo, march, officer]).failure_reason == "TOO_MANY_MODIFIERS", "Two modifier maximum")
+	check(manager.resolve_package([rifle, rifle]).is_valid, "Two Unit cards form one legal mixed package")
+	check(manager.resolve_package([rifle, mojo, march, officer]).failure_reason == "TOO_MANY_CARDS", "Three-card package maximum")
 	check(manager.resolve_package([rifle, mojo]).resolved_deployment.quantity == 12, "Mojo resolves before formation evaluation")
 	var vehicle: Resource = rifle.duplicate()
 	vehicle.tags = PackedStringArray(["Vehicle"])
@@ -73,7 +73,7 @@ func _run() -> void:
 	hand._toggle_card(4)
 	check(hand.selected_indices == [1, 2], "Incompatible Unit rejected without dropping modifiers")
 	hand._toggle_card(0)
-	check(hand.selected_indices == [0, 1, 2], "Unit selected after modifiers preserves package")
+	check(hand.selected_indices == [1, 2, 0], "Unit selected after modifiers preserves package")
 	hand._toggle_card(0)
 	check(hand.selected_indices == [1, 2], "Unit can be deselected independently")
 	hand._toggle_card(0)
@@ -136,7 +136,7 @@ func _run() -> void:
 	hand._toggle_card(0)
 	var start: Vector2 = game.get_canvas_transform() * tiny.position
 	var finish: Vector2 = game.get_canvas_transform() * tiny.end
-	hand._unhandled_input(mouse_button(start, true))
+	hand._start_footprint(start) # historical geometry helper, no longer a live input path
 	var motion := InputEventMouseMotion.new()
 	motion.position = finish
 	hand._input(motion)
@@ -146,7 +146,7 @@ func _run() -> void:
 	hand._input(mouse_button(finish, false))
 	check(not hand.has_footprint and not hand.drawing_footprint and game.footprint_preview.is_empty(), "Invalid rectangle clears on release")
 	# A new draw and release over the HUD must also end without lingering geometry.
-	hand._unhandled_input(mouse_button(start, true))
+	hand._start_footprint(start) # historical geometry helper, no longer a live input path
 	hand._input(motion)
 	var hud_release := mouse_button(Vector2(500, root.size.y - 100), false)
 	hand._input(hud_release)

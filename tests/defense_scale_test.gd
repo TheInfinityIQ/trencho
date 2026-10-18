@@ -48,6 +48,9 @@ func run() -> void:
 		await physics_frame
 		arrived = game.units.all(func(unit): return unit.state==Unit.State.DEFENDING)
 		if arrived: break
+	if not arrived:
+		for unit in game.units:
+			if unit.state != Unit.State.DEFENDING: print("LARGE STUCK ",unit.position," home ",unit.squad.defense_positions.get(unit.squad_member_index)," state ",unit.state," established ",unit.defense_established)
 	check(arrived and game.units.size()==72,"all 72 soldiers reach defense using local steering")
 	check(game.squad_commands.selected_ids.size()==6,"large command preserves six squad identities")
 	for unit in game.units:
@@ -75,6 +78,9 @@ func run() -> void:
 	defender.set_physics_process(false)
 	game.squad_commands.select_unit(defender)
 	game.squad_commands.issue_selected("DEFEND",Vector2(3200,3500),600)
+	defender.position = defender.squad.defense_positions[defender.squad_member_index]
+	defender.defense_established = true
+	game.squad_commands.points.update(0,true)
 	spec.erase("squad")
 	spec.team=1
 	spec.spawn_positions=[Vector2(3200,3600)]

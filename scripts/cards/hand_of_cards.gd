@@ -91,42 +91,40 @@ func _modifier_count() -> int:
 	return count
 
 func _can_attach(index: int) -> bool:
-	if _modifier_count() >= game.tuning.maximum_modifiers:
-		return false
-	var unit := _unit_index()
-	return unit < 0 or cards[index].compatible_with(cards[unit])
+	if selected_indices.size() >= 3 or _modifier_count() >= game.tuning.maximum_modifiers: return false
+	for selected in selected_indices:
+		if cards[selected].card_type == BattleCard.Type.UNIT and not cards[index].compatible_with(cards[selected]): return false
+	return true
 
 func _unit_compatible(index: int) -> bool:
 	for selected in selected_indices:
-		if cards[selected].card_type == BattleCard.Type.MODIFIER and not cards[selected].compatible_with(cards[index]):
-			return false
+		if cards[selected].card_type == BattleCard.Type.MODIFIER and not cards[selected].compatible_with(cards[index]): return false
 	return true
 
 func _toggle_card(index: int) -> void:
 	if selected_indices.has(index):
 		selected_indices.erase(index)
 		card_deselected.emit(cards[index])
+	elif selected_indices.size() >= 3:
+		message = "Maximum three cards per package."
+		return
 	elif cards[index].card_type == BattleCard.Type.UNIT:
-		if not _unit_compatible(index):
-			message = "INCOMPATIBLE_MODIFIER: this Unit cannot use the selected modifiers."
+		var unit_count := selected_indices.size()-_modifier_count()
+		if unit_count >= 2 or not _unit_compatible(index):
+			message = "Maximum two compatible Unit cards."
 			return
-		var previous_unit := _unit_index()
-		if previous_unit >= 0:
-			selected_indices.erase(previous_unit)
-			card_deselected.emit(cards[previous_unit])
-		selected_indices.insert(0, index)
+		selected_indices.append(index)
 		card_selected.emit(cards[index])
 	elif _can_attach(index):
 		selected_indices.append(index)
 		card_selected.emit(cards[index])
 	else:
-		message = "TOO_MANY_MODIFIERS" if _modifier_count() >= game.tuning.maximum_modifiers else "INCOMPATIBLE_MODIFIER"
+		message = "Too many or incompatible Modifiers."
 		return
-	message = "Click the battlefield to open the squad blueprint. Cards and Command commit only after a valid order."
-	if _unit_index() < 0 and not selected_indices.is_empty():
-		message = "Modifiers selected. Choose a Unit to complete the package. Right-click clears."
+	message = "Click battlefield for blueprint. First Unit has front priority; second has rear priority."
 	_animate_selection()
 	_update_preview(get_viewport().get_mouse_position())
+
 func _animate_selection() -> void:
 	if selection_tween:
 		selection_tween.kill()
@@ -318,7 +316,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if pressed_index >= 0:
 				drag_offset = event.position - _card_rect(pressed_index).position
 			elif not pressed_discard:
-				_start_footprint(event.position)
+				return
 		else:
 			if drawing_footprint:
 				_drag_footprint(event.position)
@@ -327,6 +325,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif dragged_index >= 0:
 				if _discard_rect().has_point(event.position):
 					_discard_selected()
+				elif game._camera_point_allowed(event.position):
+					game.command_ui.open_blueprint(game.screen_to_battle(event.position))
 				else:
 					message = "Cards selected. Click the battlefield to configure this squad."
 				dragged_index = -1
@@ -376,6 +376,7 @@ func _draw() -> void:
 	if resolved.is_valid:
 		var stats: Dictionary = resolved.resolved_deployment
 		detail = "Health %.0f | DPS %.1f | Speed %.0f | %s" % [stats.health, stats.damage / maxf(stats.attack_interval, 0.001), stats.move_speed, game.deployment_message(preview_failure) if not preview_failure.is_empty() else message]
+		if stats.components.size() > 1: detail = "Mixed squad: native stats on cards; travel uses slowest living member. | " + message
 	draw_string(font, Vector2(16, screen.y - 233), detail, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 0.8, 0.5) if not preview_failure.is_empty() else Color(0.85, 0.85, 0.85))
 	_paint_piles()
 	for index in range(cards.size()):

@@ -22,6 +22,10 @@ func _draw() -> void:
 		draw_colored_polygon(PackedVector2Array([Vector2(-25,-105),Vector2(25,-105),Vector2(0,-140)]), Color.WHITE)
 	else:
 		draw_arc(Vector2(0,-120), 18, 0, TAU, 16, Color.WHITE, 5)
+	if unit.squad != null and unit.squad.retreating:
+		draw_string(ThemeDB.fallback_font,Vector2(80,-50),"ROUT",HORIZONTAL_ALIGNMENT_LEFT,-1,40,Color(1,0.7,0.2))
+	if unit.squad != null and unit.squad.breakthrough_remaining > 0:
+		draw_string(ThemeDB.fallback_font,Vector2(-130,-50),"+",HORIZONTAL_ALIGNMENT_LEFT,-1,50,Color(1,0.9,0.3))
 	if unit.squad != null and unit.squad.intent == "DEFEND":
 		SYMBOLS.shield_icon(self, Vector2(110, 0), radius, Color.WHITE)
 		if not unit.defense_established: SYMBOLS.state_icon(self, Vector2(110,-radius*2.8), radius, 0)

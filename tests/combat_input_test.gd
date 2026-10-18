@@ -50,7 +50,7 @@ func _run() -> void:
 	game.economies[2].current_command = 6
 	var rectangle := Rect2(2400, 5500, 1000, 500)
 	press.position = game.get_canvas_transform() * rectangle.position
-	hand._unhandled_input(press)
+	hand._start_footprint(press.position)
 	motion.position = game.get_canvas_transform() * rectangle.end
 	hand._unhandled_input(motion)
 	check(game.footprint_preview.is_valid and game.preview.get_child_count() == 12, "Selected package previews a drawn formation")
@@ -71,7 +71,7 @@ func _run() -> void:
 		var cards_before: Array = hand.cards.duplicate()
 		var invalid_rect := Rect2(2400, 5500, 100, 100)
 		press.position = game.get_canvas_transform() * invalid_rect.position
-		hand._unhandled_input(press)
+		hand._start_footprint(press.position)
 		motion.position = game.get_canvas_transform() * invalid_rect.end
 		hand._input(motion)
 		check(hand.drawing_footprint and not game.footprint_preview.is_valid, "Invalid box is red while drawing")
@@ -88,7 +88,7 @@ func _run() -> void:
 	hand._toggle_card(0)
 	game.economies[2].current_command = 3
 	press.position = game.get_canvas_transform() * rectangle.position
-	hand._unhandled_input(press)
+	hand._start_footprint(press.position)
 	motion.position = game.get_canvas_transform() * rectangle.end
 	hand._input(motion)
 	release.position = motion.position

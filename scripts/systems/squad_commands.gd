@@ -10,9 +10,12 @@ var selected_ids: Array[int] = []
 var orders: Dictionary = {}
 var next_squad_id := 1
 var next_order_id := 1
+var points: RefCounted
+var simulation_time := 0.0
 
 func _init(owner_battle: Node) -> void:
 	battle = owner_battle
+	points = preload("res://scripts/systems/defensive_points.gd").new(self)
 
 func create_squad(specification: Dictionary) -> BattleSquad:
 	var squad := SQUAD.new()
@@ -78,7 +81,16 @@ func unit_at(world: Vector2, tolerance: float) -> Unit:
 func member_removed(unit: Unit) -> void:
 	if unit.squad == null: return
 	unit.squad.members.erase(unit)
-	if orders.has(unit.squad.order_id): orders[unit.squad.order_id].dirty = true
+	unit.squad.refresh_travel()
+	if orders.has(unit.squad.order_id):
+		var point: Dictionary = orders[unit.squad.order_id]
+		point.dirty = true
+		points.clock = 0
+		# Reward only destruction, never a voluntary order change or departure.
+		var remaining := 0
+		for squad_id in point.squads:
+			if squads.has(squad_id): remaining += count_members(squads[squad_id])
+		if remaining == 0: break_point(unit.squad.order_id,true)
 	prune()
 
 func prune() -> void:
@@ -97,7 +109,7 @@ func prune() -> void:
 		if remaining.is_empty(): orders.erase(id)
 
 func result(success: bool, kind: String, reason: String = "") -> Dictionary:
-	return {"success": success, "command_type": kind, "affected_squad_ids": [], "failure_reason": reason, "defense_center": Vector2.ZERO, "defense_radius": 0.0, "expanded": false}
+	return {"success": success, "command_type": kind, "affected_squad_ids": [], "failure_reason": reason, "defense_center": Vector2.ZERO, "defense_radius": 0.0, "expanded": false, "route": PackedVector2Array(), "defensive_point_id": -1}
 
 func defense_plan(team: int, count: int, center: Vector2, requested_radius: float) -> Dictionary:
 	var plan := result(false, "DEFEND", "INVALID_DEFEND_AREA")
@@ -135,81 +147,212 @@ func defense_plan(team: int, count: int, center: Vector2, requested_radius: floa
 	plan.failure_reason = "POSITION_UNREACHABLE"
 	return plan
 
-func apply_validated(group: Array, kind: String, plan: Dictionary = {}) -> Dictionary:
-	var response := result(true, kind)
-	var shared_id := -1
+func apply_validated(group: Array, kind: String, plan: Dictionary = {}, route: PackedVector2Array = PackedVector2Array(), target_id: int = -1) -> Dictionary:
+	var response := result(true,kind)
+	var shared_id := target_id
 	if kind == "DEFEND":
-		shared_id = next_order_id
-		next_order_id += 1
-		orders[shared_id] = {"squads": [], "center": plan.defense_center, "radius": plan.defense_radius, "dirty": false, "enemies": [], "enemy_cache_valid": false}
+		if not orders.has(shared_id):
+			shared_id = next_order_id
+			next_order_id += 1
+			orders[shared_id] = {"squads":[],"team":group[0].team,"center":plan.defense_center,"anchors":[plan.defense_center],"radius":plan.defense_radius,"dirty":false,"enemies":[],"enemy_cache_valid":false,"cells":{},"preview_cells":plan.get("preview_cells",{}),"established":0,"inbound":0,"lifecycle":"PENDING","desired_cells":0,"desired_area":0.0,"actual_area":0.0,"pressure":0.0,"capacity":0,"capacity_state":"STABLE","neighbors":[],"contributors":{}}
+		else:
+			plan = points.plan(group[0].team,_point_count(shared_id)+_group_count(group,shared_id),orders[shared_id].center)
+			# Capacity is a warning, not a reinforcement veto.
+			if not plan.success:
+				plan = {"defense_center":orders[shared_id].center,"defense_radius":orders[shared_id].radius,"expanded":false,"positions":[]}
 		response.defense_center = plan.defense_center
 		response.defense_radius = plan.defense_radius
 		response.expanded = plan.expanded
-	var position_index := 0
+		response.defensive_point_id = shared_id
+	response.route = route.duplicate()
 	for squad in group:
-		if orders.has(squad.order_id): orders[squad.order_id].dirty = true
+		if orders.has(squad.order_id):
+			orders[squad.order_id].dirty = true
+			orders[squad.order_id].squads.erase(squad.squad_id)
 		squad.intent = kind
 		squad.order_id = shared_id
 		squad.defense_positions.clear()
+		squad.route_waypoints = route.duplicate()
+		squad.route_indices.clear()
+		squad.route_offsets.clear()
+		squad.refresh_travel()
+		var front := Vector2.ZERO
+		if not squad.living_members().is_empty():
+			front = squad.combat_center
+		for unit in squad.living_members():
+			# Preserve lateral/depth disorder rather than funneling all soldiers
+			# into a single waypoint and waiting to restore a pristine formation.
+			squad.route_offsets[unit.squad_member_index] = (unit.global_position-front).limit_length(battle.tuning.cohesion_leash*0.6)
 		response.affected_squad_ids.append(squad.squad_id)
 		if kind == "DEFEND":
 			squad.defense_center = plan.defense_center
 			squad.defense_radius = plan.defense_radius
 			orders[shared_id].squads.append(squad.squad_id)
-			position_index = _assign_positions(squad, plan.positions, position_index)
-		else:
-			squad.defense_radius = 0
+		else: squad.defense_radius = 0
 		for unit in squad.living_members():
 			unit.defense_established = false
-			unit.defense_avoid_side = 1.0 if unit.squad_member_index % 2 == 0 else -1.0
 			unit.target = null
 			unit.state = Unit.State.MOVING_TO_DEFEND if kind == "DEFEND" else (Unit.State.ADVANCING if unit.has_entered_battlefield else Unit.State.ENTERING_BATTLEFIELD)
+	if kind == "DEFEND": _repack(shared_id)
+	prune()
+	points.clock = 0
 	command_resolved.emit(response)
 	return response
 
-func issue_selected(kind: String, center: Vector2 = Vector2.ZERO, radius: float = 0) -> Dictionary:
+func _point_count(id: int) -> int:
+	var count := 0
+	for squad_id in orders[id].squads:
+		if squads.has(squad_id): count += count_members(squads[squad_id])
+	return count
+
+func _group_count(group: Array, excluding: int = -1) -> int:
+	var count := 0
+	for squad in group:
+		if squad.order_id != excluding or excluding == -1: count += count_members(squad)
+	return count
+
+func _repack(id: int) -> void:
+	if not orders.has(id): return
+	var order: Dictionary = orders[id]
+	var count := _point_count(id)
+	var cells: Dictionary = points.isolated(order.team,order.anchors,count)
+	if count <= order.established and not order.cells.is_empty(): cells = order.cells.duplicate()
+	# The home projection is not active territory, and cannot steal another
+	# point's established cells. Arrivals increase actual area on the next solve.
+	for cell in cells.keys():
+		if points.owners.has(cell) and points.owners[cell] != id and orders.has(points.owners[cell]): cells.erase(cell)
+	var positions: Array = points.homes(cells,count,order.center)
+	if positions.size() < count: positions = points.homes(cells,count,order.center,true)
+	if positions.size() < count:
+		order.capacity_state = "CRITICAL"
+		return
+	order.preview_cells = cells
+	order.radius = points.bounds_radius(cells,order.center)
+	positions.sort_custom(func(a,b): return a.x < b.x if is_equal_approx(a.y,b.y) else (a.y < b.y if order.team == 2 else a.y > b.y))
+	var offset := 0
+	for squad_id in order.squads:
+		if not squads.has(squad_id): continue
+		var squad: BattleSquad = squads[squad_id]
+		squad.defense_center = order.center
+		squad.defense_radius = order.radius
+		offset = _assign_positions(squad,positions,offset)
+		for unit in squad.living_members():
+			if unit.defense_established: unit.state = Unit.State.RETURNING_TO_DEFENSE
+	order.dirty = false
+
+func issue_selected(kind: String, center: Vector2 = Vector2.ZERO, radius: float = 0, route: PackedVector2Array = PackedVector2Array()) -> Dictionary:
 	prune()
-	var group := selected_squads()
-	var response := result(false, kind, "NO_SELECTED_UNITS")
+	return issue_group(selected_squads(),kind,center,radius,route)
+
+func issue_group(group: Array, kind: String, center: Vector2 = Vector2.ZERO, _radius: float = 0, route: PackedVector2Array = PackedVector2Array(), target_id: int = -1) -> Dictionary:
+	var response := result(false,kind,"NO_SELECTED_UNITS")
 	if not battle.battle_active: response.failure_reason = "BATTLE_ENDED"
 	elif not group.is_empty():
-		if kind == "ADVANCE": return apply_validated(group, kind)
-		if kind == "DEFEND":
-			var count := 0
-			for squad in group: count += count_members(squad)
-			var plan := defense_plan(2, count, center, radius)
-			if plan.success: return apply_validated(group, kind, plan)
+		for squad in group:
+			if squad.retreating:
+				response.failure_reason = "SQUAD_RETREATING"
+				command_resolved.emit(response)
+				return response
+		for waypoint in route:
+			if not waypoint.is_finite() or not Rect2(Vector2.ZERO,battle.field_size).has_point(waypoint):
+				response.failure_reason = "POSITION_UNREACHABLE"
+				command_resolved.emit(response)
+				return response
+		if not route.is_empty() and kind == "ADVANCE": target_id = points.point_at(group[0].team,route[-1])
+		if target_id >= 0 and orders.has(target_id):
+			if orders[target_id].team != group[0].team:
+				response.failure_reason = "INVALID_DEFEND_LOCATION"
+			else:
+				return apply_validated(group,"DEFEND",{},route,target_id)
+		elif kind == "ADVANCE": return apply_validated(group,kind,{},route)
+		elif kind == "DEFEND":
+			var plan: Dictionary = points.plan(group[0].team,_group_count(group),center)
+			if plan.success: return apply_validated(group,kind,plan,route)
 			response = plan
 		else: response.failure_reason = "UNRECOGNIZED_GESTURE"
 	command_resolved.emit(response)
 	return response
 
-func tick() -> void:
+func tick(delta: float = 1.0/60.0) -> void:
+	simulation_time += delta
 	prune()
+	for squad in squads.values():
+		squad.refresh_travel()
+		squad.combat_candidates.clear()
+		var reach: float = battle.tuning.cohesion_leash
+		for member in squad.living_members(): reach = maxf(reach,member.attack_range)
+		for enemy in battle.units:
+			if enemy.team_id != squad.team and enemy.is_alive() and enemy.position.distance_to(squad.combat_center) <= reach: squad.combat_candidates.append(enemy)
+		squad.breakthrough_remaining = maxf(0,squad.breakthrough_remaining-delta)
+	points.update(delta)
 	for id in orders.keys():
 		var order: Dictionary = orders[id]
 		_refresh_enemies(order)
-		if not order.dirty: continue
-		var group: Array = []
-		var count := 0
-		var pressure := false
-		for squad_id in order.squads:
-			var squad: BattleSquad = squads[squad_id]
-			group.append(squad)
-			count += count_members(squad)
-			for unit in squad.living_members():
-				if is_instance_valid(unit.target) and unit.target.is_alive(): pressure = true
-		if not order.enemies.is_empty(): pressure = true
-		if pressure: continue
-		var plan := defense_plan(group[0].team, count, order.center, order.radius)
-		if not plan.success: continue
-		order.radius = plan.defense_radius
-		var index := 0
-		for squad in group:
-			squad.defense_radius = plan.defense_radius
-			index = _assign_positions(squad, plan.positions, index)
-			for unit in squad.living_members(): unit.state = Unit.State.RETURNING_TO_DEFENSE
-		order.dirty = false
+		var contested := false
+		for neighbor in order.neighbors:
+			if orders.has(neighbor) and orders[neighbor].team != order.team: contested = true
+		if order.dirty and order.enemies.is_empty() and not contested: _repack(id)
+
+func record_damage(attacker: Unit, defender: Unit) -> void:
+	if attacker.squad == null or defender.squad == null or not orders.has(defender.squad.order_id): return
+	orders[defender.squad.order_id].contributors[attacker.squad.squad_id] = simulation_time
+
+func award_breakthrough(squad: BattleSquad) -> void:
+	var heal_budget := 0.0
+	var unused := 0.0
+	for unit in squad.living_members():
+		var heal: float = unit.total_health*battle.tuning.breakthrough_heal_fraction
+		var actual := minf(heal,unit.total_health-unit.current_health)
+		unit.current_health += actual
+		unit.update_health_bar()
+		heal_budget += heal
+		unused += heal-actual
+	var duration: float = battle.tuning.breakthrough_duration*(1.0+unused/maxf(0.001,heal_budget))
+	var cap: float = battle.tuning.breakthrough_duration*battle.tuning.breakthrough_duration_cap
+	squad.breakthrough_remaining = minf(cap,maxf(squad.breakthrough_remaining,duration))
+
+func break_point(id: int, combat: bool = true) -> void:
+	if not orders.has(id): return
+	var point: Dictionary = orders[id]
+	if combat:
+		for squad_id in point.contributors:
+			if squads.has(squad_id) and simulation_time-point.contributors[squad_id] <= battle.tuning.breakthrough_contribution_window: award_breakthrough(squads[squad_id])
+	for squad_id in point.squads:
+		if not squads.has(squad_id): continue
+		var squad: BattleSquad = squads[squad_id]
+		squad.intent = "ADVANCE"
+		squad.order_id = -1
+		squad.route_waypoints.clear()
+		squad.defense_positions.clear()
+		squad.defense_radius = 0
+		squad.retreating = combat and not squad.living_members().is_empty()
+		for unit in squad.living_members():
+			unit.defense_established = false
+			unit.target = null
+			unit.state = Unit.State.RETREATING if squad.retreating else Unit.State.ADVANCING
+	orders.erase(id)
+	points.clock = 0
+
+func inside_defense(squad: BattleSquad, position: Vector2) -> bool:
+	return orders.has(squad.order_id) and points.contains(orders[squad.order_id],position)
+
+func intercepted_enemy(unit: Unit, destination: Vector2) -> Unit:
+	var heading := unit.global_position.direction_to(destination)
+	for sample in [unit.global_position,unit.global_position+heading*points.cell_size()]:
+		var id: int = points.owners.get(points.cell_at(sample),-1)
+		if not orders.has(id) or orders[id].team == unit.team_id or orders[id].lifecycle != "ACTIVE": continue
+		var closest: Unit = null
+		var distance := INF
+		for squad_id in orders[id].squads:
+			if not squads.has(squad_id): continue
+			for defender in squads[squad_id].living_members():
+				if not defender.defense_established: continue
+				var candidate: float = defender.position.distance_squared_to(unit.position)
+				if candidate < distance:
+					distance = candidate
+					closest = defender
+		if closest != null: return closest
+	return null
 
 func _assign_positions(squad: BattleSquad, positions: Array, offset: int) -> int:
 	var members: Array = []
@@ -230,11 +373,8 @@ func invalidate_enemy_cache() -> void:
 
 func _refresh_enemies(order: Dictionary) -> void:
 	order.enemies.clear()
-	if order.squads.is_empty(): return
-	var team: int = squads[order.squads[0]].team
-	var radius_squared: float = order.radius * order.radius
 	for unit in battle.units:
-		if unit.team_id != team and unit.is_alive() and unit.global_position.distance_squared_to(order.center) <= radius_squared: order.enemies.append(unit)
+		if unit.team_id != order.team and unit.is_alive() and points.contains(order,unit.global_position): order.enemies.append(unit)
 	order.enemy_cache_valid = true
 
 func defense_enemies(squad: BattleSquad) -> Array:

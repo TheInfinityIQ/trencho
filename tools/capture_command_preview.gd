@@ -38,7 +38,9 @@ func run() -> void:
 	soldiers("rifle_squad",1,Vector2(2700,1900),6)
 	game.hand.cards.assign([game.card_catalog.rifle_squad,game.card_catalog.commander_mojo,game.card_catalog.assault_squad,game.card_catalog.conscript_wave,game.card_catalog.forced_march])
 	game.hand._toggle_card(0)
-	game.hand._toggle_card(1)
+	game.hand._toggle_card(2)
+	game.command_ui.blueprint_width = 1900
+	game.command_ui.blueprint_depth = 620
 	game.economies[2].current_command = 10
 	game.command_ui.open_blueprint(Vector2(3200,3500))
 	game.planning.advance(1)
@@ -51,6 +53,11 @@ func run() -> void:
 	game.planning.begin()
 	game.planning.advance(1)
 	game.squad_commands.issue_selected("DEFEND",Vector2(3200,3500),800)
+	for squad in game.squad_commands.selected_squads():
+		for unit in squad.living_members():
+			unit.position = squad.defense_positions[unit.squad_member_index]
+			unit.defense_established = true
+	game.squad_commands.points.update(0,true)
 	game.command_ui.set_process(false)
 	game.command_ui.queue_redraw()
 	await capture("squad-planning")

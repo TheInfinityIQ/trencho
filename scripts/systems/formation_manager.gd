@@ -130,6 +130,7 @@ func entry_positions(team: int, points: Array) -> Array[Vector2]:
 	return positions
 
 func reserve(specification: Dictionary) -> void:
+	battle.deployment_manager.assign_components(specification)
 	var entries := entry_positions(specification.team, specification.spawn_positions)
 	var deployment_id := next_deployment_id
 	next_deployment_id += 1

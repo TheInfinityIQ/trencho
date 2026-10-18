@@ -97,7 +97,7 @@ func run() -> void:
 	check(separated, "shared defense positions do not overlap")
 	var previous_order: int = first[0].squad.order_id
 	var rejected: Dictionary = commands.issue_selected("DEFEND", Vector2(3200,500),500)
-	check(not rejected.success and rejected.failure_reason == "INVALID_DEFEND_AREA", "circle overlapping enemy No-Hold Zone fails")
+	check(not rejected.success and rejected.failure_reason == "INVALID_DEFEND_LOCATION", "circle overlapping enemy No-Hold Zone fails")
 	check(first[0].squad.order_id == previous_order and commands.selected_ids.size() == 2, "failed order preserves previous intent and selection")
 	check(not commands.defense_plan(2,5,Vector2(30,3500),500).success, "circle crossing map boundary fails")
 	check(not commands.defense_plan(2,50000,Vector2(3200,3500),500).success, "impossible packing fails within bounded maximum radius")

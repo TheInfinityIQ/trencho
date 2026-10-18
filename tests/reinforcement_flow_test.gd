@@ -166,11 +166,11 @@ func run() -> void:
 	var enemy_orders := 0
 	for slot in fm.pending:
 		if slot.team == 1: enemy_orders += 1
-	check(enemy_orders == 6 and game.economies[1].current_command == 7,"enemy starts normal rifle deployment after gate")
+	check(enemy_orders >= 6 and game.economies[1].current_command < 10,"enemy starts a legal paid package after gate")
 	clear_units()
 	game.economies[1].current_command = 10
-	game.enemy_controller.decide()
-	check(fm.pending.size() == 6,"gate stays open after all player troops are gone")
+	game.enemy_controller.tick(1.0)
+	check(fm.pending.size() >= 6,"gate stays open after all player troops are gone and deployment cooldown elapses")
 	clear_units()
 	var points: Array = fm.evaluate(2,wide,12).chosen_slots
 	var shifted: Array = fm.evaluate(2,Rect2(1200,4800,940,300),12).chosen_slots

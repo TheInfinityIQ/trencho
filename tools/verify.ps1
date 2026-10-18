@@ -2,8 +2,8 @@
 [CmdletBinding()]
 param(
     [string]$GodotPath = $env:GODOT_BIN,
-    [ValidateSet('defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak')]
-    [string[]]$Suite = @('defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak'),
+    [ValidateSet('drawn_command_v02', 'retired_box', 'defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak')]
+    [string[]]$Suite = @('drawn_command_v02', 'retired_box', 'defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak'),
     [switch]$FreshImport,
     [ValidateRange(1, 600)][int]$TimeoutSeconds = 300
 )
@@ -86,6 +86,8 @@ try {
     }
     $null = Invoke-GodotCheck -Name 'import' -EngineArguments @('--headless', '--path', $testRoot, '--import')
     $markers = @{
+        drawn_command_v02 = 'DRAWN COMMAND V02: \d+ assertions, PASSED'
+        retired_box = 'RETIRED BOX: \d+ assertions, PASSED'
         defense_scale = 'DEFENSE SCALE: \d+ assertions, PASSED'
         blueprint_drag = 'BLUEPRINT DRAG: \d+ assertions, PASSED'
         squad_movement = 'SQUAD MOVEMENT: \d+ assertions, PASSED'
