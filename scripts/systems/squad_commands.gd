@@ -183,6 +183,7 @@ func defense_plan(team: int, count: int, center: Vector2, requested_radius: floa
 func apply_validated(group: Array, kind: String, plan: Dictionary = {}, route: PackedVector2Array = PackedVector2Array(), target_id: int = -1) -> Dictionary:
 	if selected_point_id >= 0: selected_point_id = -1
 	var response := result(true,kind)
+	response.team = group[0].team
 	var shared_id := target_id
 	if kind == "DEFEND":
 		if not orders.has(shared_id):
@@ -243,8 +244,9 @@ func apply_validated(group: Array, kind: String, plan: Dictionary = {}, route: P
 			unit.state = Unit.State.MOVING_TO_DEFEND if kind == "DEFEND" else (Unit.State.ADVANCING if unit.has_entered_battlefield else Unit.State.ENTERING_BATTLEFIELD)
 	if battle.telemetry != null:
 		for squad in group: battle.telemetry.order(squad,kind,squad.route_waypoints)
-	if kind == "DEFEND": _repack(shared_id)
+	# Release vacated points before projecting homes for the replacement order.
 	prune()
+	if kind == "DEFEND": _repack(shared_id)
 	points.clock = 0
 	command_resolved.emit(response)
 	return response
@@ -355,6 +357,7 @@ func issue_selected(kind: String, center: Vector2 = Vector2.ZERO, radius: float 
 
 func issue_group(group: Array, kind: String, center: Vector2 = Vector2.ZERO, _radius: float = 0, route: PackedVector2Array = PackedVector2Array(), target_id: int = -1) -> Dictionary:
 	var response := result(false,kind,"NO_SELECTED_UNITS")
+	response.team = group[0].team if not group.is_empty() else 2
 	if not battle.battle_active: response.failure_reason = "BATTLE_ENDED"
 	elif not group.is_empty():
 		for squad in group:
@@ -378,6 +381,7 @@ func issue_group(group: Array, kind: String, center: Vector2 = Vector2.ZERO, _ra
 			var plan: Dictionary = points.plan(group[0].team,_group_count(group),center)
 			if plan.success: return apply_validated(group,kind,plan,route)
 			response = plan
+			response.team = group[0].team
 		else: response.failure_reason = "UNRECOGNIZED_GESTURE"
 	command_resolved.emit(response)
 	return response

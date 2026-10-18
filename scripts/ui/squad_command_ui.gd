@@ -263,6 +263,8 @@ func fail(reason: String, origin: Vector2) -> Dictionary:
 	return result
 
 func _on_result(result: Dictionary) -> void:
+	# AI orders use the same signal but do not own player feedback or notices.
+	if result.get("team", 2) != 2: return
 	failure_reason = result.failure_reason
 	feedback.append({"result": result, "origin": gesture_origin, "age": 0.0, "end": game.screen_to_battle(stroke[-1]) if not stroke.is_empty() else gesture_origin + Vector2(0, -350)})
 	if result.expanded: game.hand.message = "Defense area expanded to fit squad"

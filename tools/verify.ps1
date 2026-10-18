@@ -2,8 +2,8 @@
 [CmdletBinding()]
 param(
     [string]$GodotPath = $env:GODOT_BIN,
-    [ValidateSet('ai_flow', 'mirror_mode', 'next_pass', 'defensive_combat', 'combat_telemetry', 'territory_performance', 'drawn_command_v02', 'retired_box', 'defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak')]
-    [string[]]$Suite = @('ai_flow', 'mirror_mode', 'next_pass', 'defensive_combat', 'combat_telemetry', 'territory_performance', 'drawn_command_v02', 'retired_box', 'defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak'),
+    [ValidateSet('ai_flow', 'mirror_mode', 'next_pass', 'defensive_combat', 'combat_telemetry', 'territory_performance', 'drawn_command_v02', 'retired_box', 'defense_regression', 'defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak')]
+    [string[]]$Suite = @('ai_flow', 'mirror_mode', 'next_pass', 'defensive_combat', 'combat_telemetry', 'territory_performance', 'drawn_command_v02', 'retired_box', 'defense_regression', 'defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak'),
     [switch]$FreshImport,
     [ValidateRange(1, 600)][int]$TimeoutSeconds = 300
 )
@@ -94,6 +94,7 @@ try {
         territory_performance = 'TERRITORY PERFORMANCE: \d+ assertions, PASSED'
         drawn_command_v02 = 'DRAWN COMMAND V02: \d+ assertions, PASSED'
         retired_box = 'RETIRED BOX: \d+ assertions, PASSED'
+        defense_regression = 'DEFENSE REGRESSION: \d+ assertions, PASSED'
         defense_scale = 'DEFENSE SCALE: \d+ assertions, PASSED'
         blueprint_drag = 'BLUEPRINT DRAG: \d+ assertions, PASSED'
         squad_movement = 'SQUAD MOVEMENT: \d+ assertions, PASSED'
