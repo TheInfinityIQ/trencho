@@ -2,8 +2,8 @@
 [CmdletBinding()]
 param(
     [string]$GodotPath = $env:GODOT_BIN,
-    [ValidateSet('defensive_combat', 'combat_telemetry', 'territory_performance', 'drawn_command_v02', 'retired_box', 'defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak')]
-    [string[]]$Suite = @('defensive_combat', 'combat_telemetry', 'territory_performance', 'drawn_command_v02', 'retired_box', 'defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak'),
+    [ValidateSet('mirror_mode', 'next_pass', 'defensive_combat', 'combat_telemetry', 'territory_performance', 'drawn_command_v02', 'retired_box', 'defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak')]
+    [string[]]$Suite = @('mirror_mode', 'next_pass', 'defensive_combat', 'combat_telemetry', 'territory_performance', 'drawn_command_v02', 'retired_box', 'defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak'),
     [switch]$FreshImport,
     [ValidateRange(1, 600)][int]$TimeoutSeconds = 300
 )
@@ -86,6 +86,8 @@ try {
     }
     $null = Invoke-GodotCheck -Name 'import' -EngineArguments @('--headless', '--path', $testRoot, '--import')
     $markers = @{
+        mirror_mode = 'MIRROR MODE: \d+ assertions, PASSED'
+        next_pass = 'NEXT PASS: \d+ assertions, PASSED'
         defensive_combat = 'DEFENSIVE COMBAT: \d+ assertions, PASSED'
         combat_telemetry = 'COMBAT TELEMETRY: \d+ assertions, PASSED'
         territory_performance = 'TERRITORY PERFORMANCE: \d+ assertions, PASSED'

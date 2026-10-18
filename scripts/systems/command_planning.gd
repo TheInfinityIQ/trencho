@@ -38,6 +38,7 @@ func advance(real_delta: float) -> void:
 	effect.material.set_shader_parameter("brightness", lerpf(1.0, battle.tuning.planning_brightness_adjustment, eased))
 
 func _process(_delta: float) -> void:
+	if battle.match_options.get("mirror",false): return
 	var now := Time.get_ticks_usec()
 	advance(minf(0.1, float(now - previous_real_time) / 1000000.0))
 	previous_real_time = now

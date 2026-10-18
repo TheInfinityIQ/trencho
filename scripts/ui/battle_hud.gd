@@ -27,13 +27,14 @@ func _ready() -> void:
 	camera_toolbar = HBoxContainer.new()
 	camera_toolbar.add_theme_constant_override("separation", 6)
 	add_child(camera_toolbar)
-	for label in ["−", "+", "Overview", "Deploy", "Fullscreen (F11)"]:
+	for label in ["−", "+", "Overview", "Deploy", "Menu", "Fullscreen (F11)"]:
 		var button := Button.new()
 		button.text = label
 		button.custom_minimum_size = Vector2(38, 32)
 		match label:
 			"−": button.pressed.connect(func(): game.zoom_camera(1.0 / 1.2))
 			"+": button.pressed.connect(func(): game.zoom_camera(1.2))
+			"Menu": button.pressed.connect(game.return_to_menu)
 			"Overview": button.pressed.connect(game.show_overview)
 			"Deploy": button.pressed.connect(game.show_deployment)
 			"Fullscreen (F11)": button.pressed.connect(game.toggle_fullscreen)

@@ -22,7 +22,7 @@ def validate(path):
         return math.isclose(left, right, abs_tol=0.001, rel_tol=1e-8)
 
     match = data["match"]
-    check(data["schema_version"] == "0.1", "Supported schema")
+    check(data["schema_version"] in ("0.1", "0.2"), "Supported schema")
     check(bool(data["stat_snapshot"]["units"]), "Unit stat snapshot exists")
     check(match["timestamp_end"] is not None, "Match completed")
     events = data["events"]
@@ -52,6 +52,15 @@ def validate(path):
         check(same(sum(row["score_contribution"] for row in squads), score), f"Team {team} score attribution")
         score_events = [entry for entry in events if entry["type"] == "SCORE_EVENT" and entry["team"] == team]
         check(same(sum(entry["score_delta"] for entry in score_events), score), f"Team {team} score events")
+    if data["schema_version"] == "0.2":
+        for point in data["defensive_points"]:
+            check(point["deleted_time"] is None or bool(point.get("delete_reason")),
+                  "Deleted point has an explicit reason")
+        for entry in events:
+            if entry["type"] == "DEFENSIVE_POINT_BROKEN":
+                check(all(key in entry for key in ("team", "surviving_defenders_at_break",
+                      "living_assigned_squads_before_break", "inbound_defenders_at_break", "break_cause")),
+                      "Point break has survivor diagnostics")
     for entry in events:
         if entry["type"] == "DAMAGE_DEALT":
             check(entry["overkill_damage"] >= 0 and entry["damage_applied"] >= 0,

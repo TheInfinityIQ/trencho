@@ -221,6 +221,8 @@ func _run() -> void:
 	check(is_equal_approx(game.units[1].position.y - game.units[0].position.y, game.tuning.spawn_spacing), "Depth produces physical rank spacing")
 	clear_units()
 	# Enemy requests use the same region/slot/reservation path.
+	# Pin this fixture to Rifle; template diversity is tested separately.
+	game.enemy_controller.planned_package = [rifle]
 	game.economies[1].current_command = 3
 	game.enemy_controller.decide()
 	check(game.economies[1].current_command == 0 and fm.pending.size() == 6, "Bot pays and reserves through shared formation validation")

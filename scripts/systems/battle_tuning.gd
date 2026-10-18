@@ -67,3 +67,9 @@ class_name BattleTuning
 @export_range(0.1, 5) var telemetry_sample_interval: float = 1.0
 @export var stuck_distance_threshold: float = 10.0
 @export var stuck_time_threshold: float = 2.0
+
+@export_group("Route diagnostics and corridors")
+@export var route_lane_spacing: float = 320.0
+@export var progress_efficiency_threshold: float = 0.35
+@export var friction_time_threshold: float = 2.0
+@export var friction_minimum_motion: float = 10.0

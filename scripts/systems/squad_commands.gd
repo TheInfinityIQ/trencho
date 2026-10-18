@@ -7,6 +7,7 @@ const SQUAD = preload("res://scripts/systems/squad.gd")
 var battle: Node
 var squads: Dictionary = {}
 var selected_ids: Array[int] = []
+var selected_point_id := -1
 var orders: Dictionary = {}
 var next_squad_id := 1
 var next_order_id := 1
@@ -22,6 +23,7 @@ func create_squad(specification: Dictionary) -> BattleSquad:
 	squad.squad_id = next_squad_id
 	next_squad_id += 1
 	squad.team = specification.team
+	squad.route_bounds = Rect2(Vector2.ONE*battle.tuning.unit_radius,battle.field_size-Vector2.ONE*battle.tuning.unit_radius*2)
 	squad.unit_type = specification.unit_type
 	squad.source_cards = specification.get("source_cards", []).duplicate()
 	squads[squad.squad_id] = squad
@@ -31,8 +33,7 @@ func create_squad(specification: Dictionary) -> BattleSquad:
 
 func count_members(squad: BattleSquad) -> int:
 	var count := squad.living_members().size()
-	for slot in battle.formation_manager.pending:
-		if slot.specification.get("squad") == squad: count += 1
+	count += int(battle.formation_manager.pending_counts.get(squad.squad_id,0))
 	return count
 
 func selected_squads() -> Array:
@@ -42,6 +43,7 @@ func selected_squads() -> Array:
 	return result
 
 func clear_selection() -> void:
+	selected_point_id = -1
 	for id in selected_ids:
 		if squads.has(id): squads[id].selected = false
 	selected_ids.clear()
@@ -49,6 +51,8 @@ func clear_selection() -> void:
 
 func select_unit(unit: Unit, additive: bool = false) -> void:
 	if not is_instance_valid(unit) or not unit.is_alive() or unit.team_id != 2 or unit.squad == null: return
+	if selected_point_id >= 0 and not additive: clear_selection()
+	selected_point_id = -1
 	var squad: BattleSquad = unit.squad
 	if selected_ids.has(squad.squad_id):
 		selected_ids.erase(squad.squad_id)
@@ -57,6 +61,31 @@ func select_unit(unit: Unit, additive: bool = false) -> void:
 		if not additive: clear_selection()
 		selected_ids.append(squad.squad_id)
 		squad.selected = true
+	selection_changed.emit()
+
+func point_anchor_at(world: Vector2, tolerance: float) -> int:
+	var nearest := -1
+	var distance := tolerance*tolerance
+	for id in orders:
+		if orders[id].team != 2: continue
+		var candidate: float = world.distance_squared_to(orders[id].center)
+		if candidate <= distance:
+			nearest = id
+			distance = candidate
+	return nearest
+
+func select_point(id: int) -> void:
+	clear_selection()
+	if not orders.has(id) or orders[id].team != 2: return
+	for squad_id in orders[id].squads:
+		if not squads.has(squad_id): continue
+		var established := false
+		for member in squads[squad_id].living_members():
+			if member.defense_established: established = true
+		if established:
+			selected_ids.append(squad_id)
+			squads[squad_id].selected = true
+	if not selected_ids.is_empty(): selected_point_id = id
 	selection_changed.emit()
 
 func centroid() -> Vector2:
@@ -91,7 +120,7 @@ func member_removed(unit: Unit) -> void:
 		var remaining := 0
 		for squad_id in point.squads:
 			if squads.has(squad_id): remaining += count_members(squads[squad_id])
-		if remaining == 0: break_point(unit.squad.order_id,true)
+		if remaining == 0: break_point(unit.squad.order_id,true,"ALL_DEFENDERS_KILLED")
 	prune()
 
 func prune() -> void:
@@ -108,7 +137,9 @@ func prune() -> void:
 	for id in orders.keys():
 		var remaining: Array = orders[id].squads.filter(func(squad_id): return squads.has(squad_id) and squads[squad_id].order_id == id)
 		orders[id].squads = remaining
-		if remaining.is_empty(): orders.erase(id)
+		if remaining.is_empty():
+			battle.telemetry.point_deleted(id,orders[id].get("pending_delete_reason","NO_DEFENDERS_OR_INBOUND"))
+			orders.erase(id)
 
 func result(success: bool, kind: String, reason: String = "") -> Dictionary:
 	return {"success": success, "command_type": kind, "affected_squad_ids": [], "failure_reason": reason, "defense_center": Vector2.ZERO, "defense_radius": 0.0, "expanded": false, "route": PackedVector2Array(), "defensive_point_id": -1}
@@ -150,6 +181,7 @@ func defense_plan(team: int, count: int, center: Vector2, requested_radius: floa
 	return plan
 
 func apply_validated(group: Array, kind: String, plan: Dictionary = {}, route: PackedVector2Array = PackedVector2Array(), target_id: int = -1) -> Dictionary:
+	if selected_point_id >= 0: selected_point_id = -1
 	var response := result(true,kind)
 	var shared_id := target_id
 	if kind == "DEFEND":
@@ -168,15 +200,26 @@ func apply_validated(group: Array, kind: String, plan: Dictionary = {}, route: P
 		response.defensive_point_id = shared_id
 	if kind == "DEFEND" and battle.telemetry != null: battle.telemetry.point_changed(shared_id)
 	response.route = route.duplicate()
+	var direction := Vector2.UP if group[0].team == 2 else Vector2.DOWN
+	if route.size() >= 2: direction = route[0].direction_to(route[1])
+	var lateral := Vector2(-direction.y,direction.x)
+	var ordered := group.duplicate()
+	ordered.sort_custom(func(a,b): return a.combat_center.dot(lateral) < b.combat_center.dot(lateral))
 	for squad in group:
 		if orders.has(squad.order_id):
 			battle.telemetry.event("DEFENSIVE_POINT_LEFT",{"point_id":squad.order_id,"squad_id":squad.squad_id})
+			orders[squad.order_id].pending_delete_reason = "REPLACED"
 			orders[squad.order_id].dirty = true
 			orders[squad.order_id].squads.erase(squad.squad_id)
 		squad.intent = kind
 		squad.order_id = shared_id
 		squad.defense_positions.clear()
-		squad.route_waypoints = route.duplicate()
+		squad.corridor_offset = lateral*(ordered.find(squad)-(group.size()-1)*0.5)*battle.tuning.route_lane_spacing
+		squad.route_waypoints = PackedVector2Array()
+		for waypoint in route:
+			var shifted: Vector2 = waypoint+squad.corridor_offset
+			squad.route_waypoints.append(shifted.clamp(Vector2.ONE*battle.tuning.unit_radius,battle.field_size-Vector2.ONE*battle.tuning.unit_radius))
+		squad.combat_target = null
 		squad.route_indices.clear()
 		squad.route_offsets.clear()
 		squad.refresh_travel()
@@ -199,7 +242,7 @@ func apply_validated(group: Array, kind: String, plan: Dictionary = {}, route: P
 			unit.target = null
 			unit.state = Unit.State.MOVING_TO_DEFEND if kind == "DEFEND" else (Unit.State.ADVANCING if unit.has_entered_battlefield else Unit.State.ENTERING_BATTLEFIELD)
 	if battle.telemetry != null:
-		for squad in group: battle.telemetry.order(squad,kind,route)
+		for squad in group: battle.telemetry.order(squad,kind,squad.route_waypoints)
 	if kind == "DEFEND": _repack(shared_id)
 	prune()
 	points.clock = 0
@@ -236,6 +279,18 @@ func _repack(id: int) -> void:
 	order.preview_cells = cells
 	order.radius = points.bounds_radius(cells,order.center)
 	positions.sort_custom(func(a,b): return a.x < b.x if is_equal_approx(a.y,b.y) else (a.y < b.y if order.team == 2 else a.y > b.y))
+	var inbound := false
+	var established := false
+	for squad_id in order.squads:
+		if squads.has(squad_id):
+			inbound = inbound or battle.formation_manager.pending_counts.get(squad_id,0) > 0
+			for unit in squads[squad_id].living_members():
+				inbound = inbound or not unit.defense_established
+				established = established or unit.defense_established
+	if inbound and established:
+		_assign_arrival_sectors(order,positions)
+		order.dirty = false
+		return
 	var offset := 0
 	for squad_id in order.squads:
 		if not squads.has(squad_id): continue
@@ -246,6 +301,53 @@ func _repack(id: int) -> void:
 		for unit in squad.living_members():
 			if unit.defense_established: unit.state = Unit.State.RETURNING_TO_DEFENSE
 	order.dirty = false
+
+func _assign_arrival_sectors(order: Dictionary, positions: Array) -> void:
+	var available := positions.duplicate()
+	var inbound: Array = []
+	# Reserve settled bodies first, preserving their existing homes under pressure.
+	for id in order.squads:
+		if not squads.has(id): continue
+		var squad: BattleSquad = squads[id]
+		for unit in squad.living_members():
+			if unit.defense_established:
+				var home: Vector2 = squad.defense_positions.get(unit.squad_member_index,unit.position)
+				var nearest := _nearest_home(available,home)
+				if nearest >= 0: available.remove_at(nearest)
+			else: inbound.append({"squad":squad,"index":unit.squad_member_index,"position":unit.position})
+		for slot in battle.formation_manager.pending:
+			if slot.specification.get("squad") == squad: inbound.append({"squad":squad,"index":slot.member_index,"position":slot.entry_position})
+	var groups := {}
+	for member in inbound:
+		var id: int = member.squad.squad_id
+		if not groups.has(id): groups[id] = []
+		groups[id].append(member)
+	for members in groups.values():
+		var origin := Vector2.ZERO
+		for member in members: origin += member.position
+		origin /= members.size()
+		var homes: Array = []
+		for member in members:
+			var nearest := _nearest_home(available,origin)
+			if nearest < 0: break
+			homes.append(available[nearest])
+			available.remove_at(nearest)
+		var team: int = members[0].squad.team
+		# Preserve lateral files and send front arrivals into deeper homes first;
+		# nearest-per-soldier assignment can settle a blocking front rank.
+		members.sort_custom(func(a,b): return a.position.x < b.position.x if not is_equal_approx(a.position.x,b.position.x) else (a.position.y < b.position.y if team == 2 else a.position.y > b.position.y))
+		homes.sort_custom(func(a,b): return a.x < b.x if not is_equal_approx(a.x,b.x) else (a.y < b.y if team == 2 else a.y > b.y))
+		for index in range(homes.size()): members[index].squad.defense_positions[members[index].index] = homes[index]
+
+func _nearest_home(positions: Array, origin: Vector2) -> int:
+	var nearest := -1
+	var distance := INF
+	for index in range(positions.size()):
+		var candidate: float = origin.distance_squared_to(positions[index])
+		if candidate < distance:
+			distance = candidate
+			nearest = index
+	return nearest
 
 func issue_selected(kind: String, center: Vector2 = Vector2.ZERO, radius: float = 0, route: PackedVector2Array = PackedVector2Array()) -> Dictionary:
 	prune()
@@ -288,8 +390,13 @@ func tick(delta: float = 1.0/60.0) -> void:
 		squad.combat_candidates.clear()
 		var reach: float = battle.tuning.cohesion_leash
 		for member in squad.living_members(): reach = maxf(reach,member.attack_range)
-		for enemy in battle.units:
-			if enemy.team_id != squad.team and enemy.is_alive() and enemy.position.distance_to(squad.combat_center) <= reach: squad.combat_candidates.append(enemy)
+		for enemy in battle.formation_manager.near_units(squad.combat_center,reach):
+			if enemy.team_id != squad.team: squad.combat_candidates.append(enemy)
+		squad.combat_target = null
+		for member in squad.living_members():
+			if is_instance_valid(member.target) and member.target.is_alive() and member.is_attacking:
+				squad.combat_target = member.target
+				break
 		squad.breakthrough_remaining = maxf(0,squad.breakthrough_remaining-delta)
 	points.update(delta)
 	for id in orders.keys():
@@ -321,10 +428,10 @@ func award_breakthrough(squad: BattleSquad, broken_point_id: int = -1) -> void:
 	squad.breakthrough_remaining = minf(cap,maxf(squad.breakthrough_remaining,duration))
 	battle.telemetry.event("BREAKTHROUGH_REFRESHED" if was_buffed else "BREAKTHROUGH_GRANTED",{"defensive_point_broken":broken_point_id,"eligible_squad_id":squad.squad_id,"living_members_buffed":squad.living_members().size(),"heal_budget":heal_budget,"actual_healing":heal_budget-unused,"unused_healing":unused,"base_duration":battle.tuning.breakthrough_duration,"bonus_duration_from_unused_heal":duration-battle.tuning.breakthrough_duration,"final_duration":squad.breakthrough_remaining,"damage_bonus":battle.tuning.breakthrough_damage_multiplier-1.0,"fire_rate_bonus":0.0})
 
-func break_point(id: int, combat: bool = true) -> void:
+func break_point(id: int, combat: bool = true, break_cause: String = "SCRIPTED") -> void:
 	if not orders.has(id): return
 	var point: Dictionary = orders[id]
-	if battle.telemetry != null: battle.telemetry.point_broken(id,combat)
+	if battle.telemetry != null: battle.telemetry.point_broken(id,combat,break_cause)
 	if combat:
 		for squad_id in point.contributors:
 			if squads.has(squad_id) and simulation_time-point.contributors[squad_id] <= battle.tuning.breakthrough_contribution_window: award_breakthrough(squads[squad_id],id)

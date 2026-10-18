@@ -4,6 +4,7 @@ var battle: Node
 var regions: Dictionary = {}
 var reservations: Dictionary = {}
 var pending: Array[Dictionary] = []
+var pending_counts: Dictionary = {}
 var next_id := 1
 var next_deployment_id := 1
 var elapsed := 0.0
@@ -144,6 +145,8 @@ func reserve(specification: Dictionary) -> void:
 			"state": "QUEUED", "unit": null, "specification": specification}
 		reservations[id] = slot
 		pending.append(slot)
+		var squad_id: int = specification.squad.squad_id
+		pending_counts[squad_id] = pending_counts.get(squad_id,0)+1
 
 func release_unit(unit: Unit) -> void:
 	for id in reservations.keys():
@@ -152,6 +155,7 @@ func release_unit(unit: Unit) -> void:
 
 func clear() -> void:
 	pending.clear()
+	pending_counts.clear()
 	reservations.clear()
 
 func tick(delta: float) -> void:
@@ -181,6 +185,8 @@ func tick(delta: float) -> void:
 			slot.unit = unit
 			slot.state = "ENTERING"
 			pending.erase(slot)
+			var squad_id: int = slot.specification.squad.squad_id
+			pending_counts[squad_id] = pending_counts.get(squad_id,1)-1
 		if selected_deployment != -1:
 			spawn_clock[team] = battle.tuning.reinforcement_interval
 
@@ -230,6 +236,24 @@ func untrack_unit(unit: Unit) -> void:
 	body_cells[cell].erase(unit)
 	if body_cells[cell].is_empty(): body_cells.erase(cell)
 	unit_cells.erase(unit)
+
+func near_units(center: Vector2, radius: float) -> Array:
+	var result: Array = []
+	var first := Vector2i(((center-Vector2.ONE*radius)/_body_cell_size()).floor())
+	var last := Vector2i(((center+Vector2.ONE*radius)/_body_cell_size()).floor())
+	for y in range(first.y,last.y+1):
+		for x in range(first.x,last.x+1):
+			for unit in body_cells.get(Vector2i(x,y),[]):
+				if is_instance_valid(unit) and unit.is_alive() and unit.position.distance_to(center) <= radius: result.append(unit)
+	result.sort_custom(func(a,b): return a.simulation_id < b.simulation_id)
+	return result
+
+func cancel_pending_team(team: int) -> void:
+	pending = pending.filter(func(slot): return slot.team != team)
+	pending_counts.clear()
+	for slot in pending:
+		var id: int = slot.specification.squad.squad_id
+		pending_counts[id] = pending_counts.get(id,0)+1
 
 func can_move_to(point: Vector2, ignored: Unit) -> bool:
 	var minimum: float = battle.tuning.unit_radius * 2 + 2

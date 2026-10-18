@@ -183,7 +183,9 @@ func update(delta: float, force: bool = false) -> void:
 			erased.append(id)
 			continue
 		signature.append([id,order.team,order.anchors.duplicate(),established])
-	for id in erased: commands.orders.erase(id)
+	for id in erased:
+		battle.telemetry.point_deleted(id,"NO_DEFENDERS_OR_INBOUND")
+		commands.orders.erase(id)
 	if not force and signature == last_signature:
 		# Repacking can temporarily mark a projected reinforcement as Critical.
 		# Refresh derived active capacity even when ownership itself is cached.
@@ -253,8 +255,8 @@ func update(delta: float, force: bool = false) -> void:
 				if other.team == order.team and other.pressure > order.pressure and (stronger < 0 or other.pressure > commands.orders[stronger].pressure): stronger = other_id
 				if other.team != order.team and other.pressure > order.pressure: opponent = other_id
 			if stronger >= 0: absorb(id,stronger)
-			elif opponent >= 0: commands.break_point(id,true)
-			else: commands.break_point(id,false)
+			elif opponent >= 0: commands.break_point(id,true,"ENEMY_PRESSURE")
+			else: commands.break_point(id,false,"CAPACITY_POP")
 
 func absorb(weak_id: int, strong_id: int) -> void:
 	if not commands.orders.has(weak_id) or not commands.orders.has(strong_id): return

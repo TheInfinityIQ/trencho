@@ -343,6 +343,12 @@ func _input(event: InputEvent) -> void:
 		return
 	if not game._camera_point_allowed(event.position): return
 	var world: Vector2 = game.screen_to_battle(event.position)
+	var point_id: int = game.squad_commands.point_anchor_at(world,14.0/game.get_node("Camera2D").zoom.x)
+	if point_id >= 0:
+		game.hand.cancel_selection()
+		game.squad_commands.select_point(point_id)
+		get_viewport().set_input_as_handled()
+		return
 	var unit: Unit = game.squad_commands.unit_at(world, maxf(game.tuning.unit_radius, 12.0 / game.get_node("Camera2D").zoom.x))
 	if unit != null:
 		game.hand.cancel_selection()
@@ -413,7 +419,7 @@ func _draw() -> void:
 		draw_string(ThemeDB.fallback_font, Vector2(maxf(20, zone.position.x + 12), maxf(110, zone.end.y - 12)), "NO-HOLD  /  Defend prohibited  |  Advance allowed", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 0.9, 0.6, planning_alpha))
 	for squad in game.squad_commands.squads.values():
 		if squad.team != 2: continue
-		if squad.selected:
+		if squad.selected and game.squad_commands.selected_point_id < 0:
 			for unit in squad.living_members():
 				var pulse := 0.0
 				for event in feedback:
@@ -426,7 +432,11 @@ func _draw() -> void:
 			if game.squad_commands.selected_ids.has(squad_id): selected = true
 		var color := Color(0.5,0.85,1,0.7 if selected else 0.20) if point.team == 2 else Color(1,0.45,0.35,0.4)
 		_draw_territory(point.cells,color,transform)
-		SYMBOLS.shield_icon(self,transform*point.center,10,color)
+		var whole_point: bool = game.squad_commands.selected_point_id == id
+		if whole_point:
+			draw_circle(transform*point.center,21,Color(0.1,0.2,0.28,0.9))
+			draw_arc(transform*point.center,22,0,TAU,32,Color.WHITE,3,true)
+		SYMBOLS.shield_icon(self,transform*point.center,14 if whole_point else 10,Color.WHITE if whole_point else color)
 		if point.lifecycle == "PENDING":
 			draw_string(ThemeDB.fallback_font,transform*point.center+Vector2(12,4),"Inbound",HORIZONTAL_ALIGNMENT_LEFT,-1,12,color)
 	if gesture_active and preview_target >= 0 and game.squad_commands.orders.has(preview_target):

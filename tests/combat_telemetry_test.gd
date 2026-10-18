@@ -116,7 +116,7 @@ func run() -> void:
 	check(logger.closed and not logger.export_path.is_empty(),"Completed match autoexports")
 	var path: String = logger.export_path
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
-	check(parsed != null and parsed.schema_version == "0.1","JSON roundtrip")
+	check(parsed != null and parsed.schema_version == "0.2","JSON roundtrip")
 	check(parsed.match.final_score_player == 7 and parsed.match.winner == 2,"Final scores and winner")
 	check(is_equal_approx(parsed.match.duration_seconds,duration),"Simulation duration")
 	check(logger.save() and logger.export_path == path,"Repeated save creates no duplicate")

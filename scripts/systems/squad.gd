@@ -21,6 +21,9 @@ var strategic_speed := 0.0
 var combat_center := Vector2.ZERO
 var composition: Dictionary = {}
 var combat_candidates: Array = []
+var combat_target: Unit
+var corridor_offset := Vector2.ZERO
+var route_bounds := Rect2()
 
 func refresh_travel() -> void:
 	strategic_speed = INF
@@ -37,10 +40,13 @@ func refresh_travel() -> void:
 func route_target(unit) -> Vector2:
 	var index: int = route_indices.get(unit.squad_member_index,0)
 	var offset: Vector2 = route_offsets.get(unit.squad_member_index,Vector2.ZERO)
-	while index < route_waypoints.size() and unit.global_position.distance_to(route_waypoints[index]+offset) < 45:
+	while index < route_waypoints.size() and unit.global_position.distance_to(_bounded_waypoint(route_waypoints[index]+offset)) < 45:
 		index += 1
 	route_indices[unit.squad_member_index] = index
-	return route_waypoints[index]+offset if index < route_waypoints.size() else Vector2.INF
+	return _bounded_waypoint(route_waypoints[index]+offset) if index < route_waypoints.size() else Vector2.INF
+
+func _bounded_waypoint(point: Vector2) -> Vector2:
+	return point.clamp(route_bounds.position,route_bounds.end) if route_bounds.size.x > 0 else point
 
 func living_members() -> Array:
 	return members.filter(func(unit): return is_instance_valid(unit) and unit.is_alive())

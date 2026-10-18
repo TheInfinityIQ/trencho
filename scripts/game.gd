@@ -28,6 +28,11 @@ const COMMAND_UI = preload("res://scripts/ui/squad_command_ui.gd")
 	preload("res://data/cards/rifle_squad.tres"), preload("res://data/cards/assault_squad.tres"),
 	preload("res://data/cards/conscript_wave.tres"), preload("res://data/cards/commander_mojo.tres"),
 	preload("res://data/cards/forced_march.tres"), preload("res://data/cards/defensive_officer.tres")]
+var match_options: Dictionary = {}
+var player_controller: RefCounted
+var simulation_time := 0.0
+var next_simulation_id := 1
+var surrendered_team := 0
 var telemetry: RefCounted
 var unit_rng := RandomNumberGenerator.new()
 var card_catalog: Dictionary = {}
@@ -70,6 +75,15 @@ var base_zoom := 1.0
 var camera_panning := false
 
 func _ready() -> void:
+	if not match_options.is_empty():
+		tuning = tuning.duplicate()
+		tuning.random_seed = match_options.get("seed",tuning.random_seed)
+	if match_options.get("mirror",false):
+		tuning.enemy_command_max = tuning.command_max
+		tuning.enemy_command_start = tuning.command_start
+		tuning.enemy_command_regeneration_rate = tuning.command_regeneration_rate
+		tuning.enemy_enabled = true
+		player_deployment_confirmed = true
 	unit_rng.seed = tuning.random_seed + 2
 	RenderingServer.set_default_clear_color(Color(0.055, 0.075, 0.09))
 	GameMaster.team_one_score = 0
@@ -97,7 +111,9 @@ func _ready() -> void:
 	planning.battle = self
 	add_child(planning)
 	deployment_manager = DEPLOYMENT.new(self)
-	enemy_controller = ENEMY.new(self)
+	var doctrines: Array = match_options.get("doctrines",[])
+	enemy_controller = ENEMY.new(self,1,doctrines[0] if doctrines.size() == 2 else "")
+	if match_options.get("mirror",false): player_controller = ENEMY.new(self,2,doctrines[1])
 	zone_overlay = Node2D.new()
 	zone_overlay.z_index = 10
 	zone_overlay.draw.connect(_draw_zones)
@@ -128,6 +144,18 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_fit_camera)
 	_fit_camera()
 	refresh_occupancy()
+	if match_options.get("mirror",false):
+		planning.set_process(false)
+		hand.set_process_input(false)
+		hand.set_process_unhandled_input(false)
+		command_ui.set_process_input(false)
+	if not match_options.get("presentation",true):
+		set_process(false)
+		planning.set_process(false)
+		for child in get_children():
+			if child is CanvasLayer:
+				child.hide()
+				child.process_mode = Node.PROCESS_MODE_DISABLED
 
 func _process(delta: float) -> void:
 	_update_camera_input(delta)
@@ -136,6 +164,7 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if not battle_active:
 		return
+	simulation_time += delta
 	telemetry.tick(delta)
 	for economy in economies.values():
 		economy.tick(delta)
@@ -143,8 +172,10 @@ func _physics_process(delta: float) -> void:
 	squad_commands.tick(delta)
 	refresh_occupancy()
 	_check_deployment_lock(delta)
-	if battle_active and tuning.enemy_enabled:
+	if battle_active and tuning.enemy_enabled and surrendered_team != 1:
 		enemy_controller.tick(delta)
+	if battle_active and player_controller != null and surrendered_team != 2:
+		player_controller.tick(delta)
 	zone_overlay.queue_redraw()
 
 func _fit_camera() -> void:
@@ -306,8 +337,8 @@ func score_unit(unit: Unit) -> void:
 	if tuning.score_victory_enabled and scores[team] >= tuning.victory_score:
 		finish_battle(team, "Score target reached")
 
-func unregister_unit(unit: Unit, killed: bool = true) -> void:
-	telemetry.removed(unit,killed)
+func unregister_unit(unit: Unit, killed: bool = true, departure_reason: String = "scored") -> void:
+	telemetry.removed(unit,killed,departure_reason)
 	formation_manager.release_unit(unit)
 	formation_manager.untrack_unit(unit)
 	units.erase(unit)
@@ -332,6 +363,34 @@ func finish_battle(winning_team: int, reason: String) -> void:
 			unit.set_physics_process(false)
 	telemetry.finish(winner,reason)
 	battle_ended.emit(winner, reason)
+
+func surrender(team: int) -> void:
+	if not battle_active or surrendered_team != 0: return
+	surrendered_team = team
+	telemetry.data.match["forced_surrender"] = {"team":team,"timestamp":simulation_time,"reason":"SIMULATION_TIME_LIMIT","limit_seconds":match_options.get("surrender_limit_seconds",1800)}
+	telemetry.event("AI_SURRENDER",{"team":team,"reason":"SIMULATION_TIME_LIMIT","limit_seconds":match_options.get("surrender_limit_seconds",1800)})
+	for id in squad_commands.orders.keys():
+		if squad_commands.orders[id].team == team:
+			telemetry.point_deleted(id,"SCRIPTED_SURRENDER")
+			squad_commands.orders.erase(id)
+	formation_manager.cancel_pending_team(team)
+	for id in formation_manager.reservations.keys():
+		if formation_manager.reservations[id].team == team: formation_manager.reservations.erase(id)
+	for unit in units.duplicate():
+		if unit.team_id == team:
+			unit.begin_exit()
+			unregister_unit(unit,false,"surrendered")
+	var victor := 3-team
+	var controller = enemy_controller if victor == 1 else player_controller
+	if controller != null: controller.advance_only = true
+	var advancing: Array = []
+	for squad in squad_commands.squads.values():
+		if squad.team == victor and not squad.retreating: advancing.append(squad)
+	if not advancing.is_empty(): squad_commands.issue_group(advancing,"ADVANCE")
+
+func return_to_menu() -> void:
+	Engine.time_scale = 1.0
+	get_tree().change_scene_to_file("res://scenes/menu.tscn")
 
 func restart_battle() -> void:
 	get_tree().reload_current_scene()

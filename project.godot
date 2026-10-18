@@ -15,8 +15,8 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Trencho"
-config/version="0.4.1-defender-return-fire"
-run/main_scene="uid://ulcwlecnrkim"
+config/version="0.5.0-mechanics-mirror"
+run/main_scene="res://scenes/menu.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 

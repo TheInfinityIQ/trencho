@@ -1,4 +1,8 @@
-# Combat telemetry v0.1
+# Combat telemetry
+
+The current build exports schema **0.2**. See [packet 005 changes](NEXT_PASS_005.md)
+for closing, friction, deletion diagnostics and mirror-mode additions. Historical
+validation evidence below describes the original v0.1 implementation.
 
 Completed matches automatically write one JSON file to `user://combat_logs/`.
 On Windows with the current project settings this is

@@ -14,6 +14,7 @@ var squad_records: Dictionary = {}
 var active_paths: Dictionary = {}
 var point_records: Dictionary = {}
 const STATE_METRICS = {Unit.State.ADVANCING:"time_advancing",Unit.State.ENTERING_BATTLEFIELD:"time_advancing",Unit.State.CAPTURING:"time_advancing",Unit.State.DEFENDING:"time_defending",Unit.State.MOVING_TO_DEFEND:"time_moving_to_defend",Unit.State.RETURNING_TO_DEFENSE:"time_moving_to_defend",Unit.State.ENGAGING:"time_engaging",Unit.State.RETREATING:"time_retreating"}
+var observation_keys: Dictionary = {}
 var next_unit := 1
 var next_order := 1
 var routs: Dictionary = {}
@@ -23,7 +24,7 @@ func _init(owner_battle: Node) -> void:
 	battle = owner_battle
 	enabled = battle.tuning.telemetry_enabled
 	var stamp := Time.get_datetime_string_from_system(true)
-	data = {"schema_version":"0.1", "match":{
+	data = {"schema_version":"0.2", "match":{
 		"match_id":"%s_%s" % [stamp.replace(":", ""), Time.get_ticks_usec()],
 		"build_version":ProjectSettings.get_setting("application/config/version", "development"),
 		"timestamp_start":stamp, "timestamp_end":null, "duration_seconds":0.0,
@@ -56,11 +57,19 @@ func _init(owner_battle: Node) -> void:
 			definition.modifier_id = card.card_id
 			definition.effects = {"additive":card.additive.duplicate(true), "multiplicative":card.multiplicative.duplicate(true), "overrides":card.overrides.duplicate(true)}
 			data.stat_snapshot.modifiers[card.card_id] = definition
+	data.match["test_configuration"] = plain(battle.match_options)
+	data.match.engine_version = Engine.get_version_info().string
+	if OS.has_feature("editor"):
+		var hashes := {}
+		for path in ["res://scripts/game.gd","res://scripts/unit.gd","res://scripts/systems/squad.gd","res://scripts/systems/squad_commands.gd","res://scripts/systems/formation_manager.gd","res://scripts/systems/defensive_points.gd","res://scripts/systems/enemy_controller.gd","res://scripts/systems/combat_telemetry.gd","res://scenes/maps/map_test.tscn"]:
+			hashes[path] = FileAccess.get_file_as_string(path).sha256_text()
+		data.match.source_file_hashes_at_start = hashes
+		data.match.implementation_fingerprint = JSON.stringify(hashes).sha256_text()
 	for team in [1,2]:
 		var economy = battle.economies[team]
 		data.economy[str(team)] = {"initial_command":economy.current_command, "max_command":economy.maximum_command,
 			"command_generated":0.0, "command_spent":0.0, "command_wasted_at_cap":0.0,
-			"command_lost_to_cap":0.0, "time_at_command_cap":0.0, "cards_drawn":0 if team == 2 else null,
+			"command_lost_to_cap":0.0, "time_at_command_cap":0.0, "cards_drawn":0 if team == 2 and not battle.match_options.get("mirror",false) else null,
 			"cards_played":0,"unit_cards_played":0,"modifier_cards_played":0,"deployment_packages_created":0}
 		# Install before hand startup so opening draws are included.
 		economy.telemetry = self
@@ -68,6 +77,7 @@ func _init(owner_battle: Node) -> void:
 	for key in ["left","center","right"]:
 		doctrine_summary[key] = {"time_first_point_established":null,"peak_defenders":0,"time_below_target":0.0}
 	data.ai.defensive_doctrine = doctrine_summary
+	data.ai.doctrines = {"1":battle.enemy_controller.doctrine,"2":battle.player_controller.doctrine if battle.player_controller != null else "HUMAN"}
 
 func plain(value):
 	if value is Vector2 or value is Vector2i: return [value.x,value.y]
@@ -92,13 +102,13 @@ func event(kind: String, fields: Dictionary = {}) -> void:
 	if kind == "DEFENSIVE_POINT_JOINED" and point_records.has(fields.point_id): point_records[fields.point_id].reinforcement_count += 1
 
 func totals() -> Dictionary:
-	return {"soldiers_deployed":0,"soldiers_killed":0,"soldiers_survived":0,"damage_dealt":0.0,
+	return {"soldiers_deployed":0,"soldiers_killed":0,"soldiers_survived":0,"soldiers_withdrawn":0,"damage_dealt":0.0,
 		"damage_received":0.0,"healing_received":0.0,"kills":0,"deaths":0,"attack_attempts":0,"hits":0,
 		"overkill_damage":0.0,"time_alive":0.0,"time_actively_attacking":0.0,
 		"time_with_valid_target":0.0,"time_with_no_target_in_range":0.0,"time_waiting_for_attack_cooldown":0.0,
 		"time_closing_to_range":0.0,"distance_moved_during_engagement":0.0,
 		"distance_travelled":0.0,"time_stuck":0.0,"score_contribution":0,"command_cost_attributed":0.0,
-		"time_advancing":0.0,"time_defending":0.0,"time_moving_to_defend":0.0,"time_engaging":0.0,"time_retreating":0.0}
+		"squad_combat_target_acquired_count":0,"out_of_range_squad_target_count":0,"combat_close_started_count":0,"combat_close_completed_count":0,"combat_close_aborted_count":0,"distance_moved_while_closing":0.0,"pathing_friction_time":0.0,"time_no_relevant_enemy":0.0,"time_relevant_enemy_out_of_range":0.0,"time_relevant_enemy_in_range_cooldown":0.0,"time_attacking":0.0,"time_moving_to_tactical_position":0.0,"time_advancing":0.0,"time_defending":0.0,"time_moving_to_defend":0.0,"time_engaging":0.0,"time_retreating":0.0}
 
 func squad_created(spec: Dictionary) -> void:
 	if not enabled: return
@@ -181,25 +191,61 @@ func add(unit: Unit, key: String, amount: float) -> void:
 	for target in soldiers[unit.telemetry_id].targets:
 		target[key] = target.get(key,0.0)+amount
 
+func observe_add(unit: Unit, key: String, amount: float) -> void:
+	# Per-step observational counters stay local; aggregate once on final export.
+	# Combat/economy events still update their live totals immediately.
+	observation_keys[key] = true
+	var record: Dictionary = soldiers[unit.telemetry_id].record
+	record[key] = record.get(key,0.0)+amount
+
+func roll_up_observations() -> void:
+	for squad in squad_records.values():
+		for key in observation_keys: squad[key] = 0.0
+		for component in squad.components.values():
+			for key in observation_keys: component[key] = 0.0
+	for aggregate in data.unit_type_aggregates.values():
+		for key in observation_keys: aggregate[key] = 0.0
+	for tracking in soldiers.values():
+		for target in tracking.targets.slice(1):
+			for key in observation_keys: target[key] = target.get(key,0.0)+tracking.record.get(key,0.0)
+
 func observe_unit(unit: Unit, delta: float) -> void:
 	if not enabled or closed or not soldiers.has(unit.telemetry_id): return
 	var tracking: Dictionary = soldiers[unit.telemetry_id]
 	var distance: float = unit.position.distance_to(tracking.last_position)
 	tracking.last_position = unit.position
-	add(unit,"time_alive",delta)
-	add(unit,"distance_travelled",distance)
+	observe_add(unit,"time_alive",delta)
+	observe_add(unit,"distance_travelled",distance)
 	if unit.squad != null and routs.has(unit.squad.squad_id): routs[unit.squad.squad_id].distance_retreating += distance
 	var in_range: bool = unit.is_attacking and is_instance_valid(unit.target)
-	add(unit,"time_actively_attacking" if in_range else "time_with_no_target_in_range",delta)
+	observe_add(unit,"time_actively_attacking" if in_range else "time_with_no_target_in_range",delta)
 	if is_instance_valid(unit.target) and unit.target.is_alive():
-		add(unit,"time_with_valid_target",delta)
+		observe_add(unit,"time_with_valid_target",delta)
 		if in_range:
-			if unit.attack_remaining > 0: add(unit,"time_waiting_for_attack_cooldown",delta)
+			if unit.attack_remaining > 0: observe_add(unit,"time_waiting_for_attack_cooldown",delta)
 		else:
-			add(unit,"time_closing_to_range",delta)
-		add(unit,"distance_moved_during_engagement",distance)
+			observe_add(unit,"time_closing_to_range",delta)
+		observe_add(unit,"distance_moved_during_engagement",distance)
+	var relevant: bool = is_instance_valid(unit.target) and unit.target.is_alive()
+	var action := "NO_RELEVANT_ENEMY"
+	if unit.combat_closing: action = "MOVING_TO_TACTICAL_POSITION"
+	elif unit.fired_this_tick: action = "ATTACKING"
+	elif in_range: action = "RELEVANT_ENEMY_IN_RANGE_COOLDOWN"
+	elif relevant or (unit.squad != null and not unit.squad.combat_candidates.is_empty()): action = "RELEVANT_ENEMY_OUT_OF_RANGE"
+	observe_add(unit,"time_"+action.to_lower(),delta)
+	var closing_id: int = unit.target.telemetry_id if unit.combat_closing and relevant else 0
+	if closing_id != unit.closing_target_id:
+		if unit.closing_target_id != 0:
+			var completed: bool = in_range and is_instance_valid(unit.target) and unit.target.telemetry_id == unit.closing_target_id
+			observe_add(unit,"combat_close_completed_count" if completed else "combat_close_aborted_count",1)
+			event("COMBAT_CLOSE_COMPLETED" if completed else "COMBAT_CLOSE_ABORTED",{"unit_id":unit.telemetry_id,"reason":"TARGET_NOW_IN_RANGE" if completed else "TARGET_INVALID_OR_ORDER_OR_LEASH"})
+		if closing_id != 0:
+			for metric in ["squad_combat_target_acquired_count","out_of_range_squad_target_count","combat_close_started_count"]: observe_add(unit,metric,1)
+			event("COMBAT_CLOSE_STARTED",{"unit_id":unit.telemetry_id,"squad_id":unit.squad.squad_id,"target_unit_id":closing_id})
+		unit.closing_target_id = closing_id
+	if unit.combat_closing: observe_add(unit,"distance_moved_while_closing",distance)
 	var state_key: String = STATE_METRICS.get(unit.state,"")
-	if not state_key.is_empty(): add(unit,state_key,delta)
+	if not state_key.is_empty(): observe_add(unit,state_key,delta)
 	if tracking.last_state != unit.state:
 		event("STATE_CHANGED",{"unit_id":unit.telemetry_id,"state":Unit.State.keys()[unit.state]})
 		tracking.last_state = unit.state
@@ -249,7 +295,7 @@ func damage(attacker: Unit, victim: Unit, attempted: float, before: float, after
 		kill.victim_state = Unit.State.keys()[victim.state]
 		event("UNIT_KILLED",kill)
 
-func removed(unit: Unit, killed: bool) -> void:
+func removed(unit: Unit, killed: bool, departure_reason: String = "scored") -> void:
 	if not enabled or not soldiers.has(unit.telemetry_id): return
 	var record: Dictionary = soldiers[unit.telemetry_id].record
 	if record.end_time != null: return
@@ -257,12 +303,13 @@ func removed(unit: Unit, killed: bool) -> void:
 		add(unit,"deaths",1)
 		add(unit,"soldiers_killed",1)
 		event("UNIT_DIED",identity(unit))
-	else:
+	elif departure_reason == "scored":
 		add(unit,"score_contribution",unit.score_value)
 		add(unit,"soldiers_survived",1)
+	else: add(unit,"soldiers_withdrawn",1)
 	record.end_time = clock
-	record.end_reason = "killed" if killed else "scored"
-	if not killed:
+	record.end_reason = "killed" if killed else departure_reason
+	if not killed and departure_reason == "scored":
 		var fields := identity(unit,"source_")
 		fields.merge({"team":unit.team_id,"score_delta":unit.score_value})
 		event("SCORE_EVENT",fields)
@@ -327,14 +374,29 @@ func point_changed(id: int) -> void:
 	record.latest = snapshot
 	record.peak_established_soldiers = maxi(record.peak_established_soldiers,point.established)
 
-func point_broken(id: int, combat: bool) -> void:
+func point_broken(id: int, combat: bool, cause: String = "OTHER") -> void:
 	if not enabled: return
 	point_changed(id)
 	if point_records.has(id):
 		point_records[id].was_broken = true
 		point_records[id].break_reason = "combat" if combat else "capacity"
 		point_records[id].deleted_time = clock
-	event("DEFENSIVE_POINT_BROKEN",{"point_id":id,"combat":combat})
+	var point: Dictionary = battle.squad_commands.orders[id]
+	var survivors := 0
+	var established := 0
+	var inbound := 0
+	var living_squads: Array = []
+	for squad_id in point.squads:
+		if not battle.squad_commands.squads.has(squad_id): continue
+		var squad: BattleSquad = battle.squad_commands.squads[squad_id]
+		var living := squad.living_members()
+		if not living.is_empty(): living_squads.append(squad_id)
+		survivors += living.size()
+		for unit in living:
+			if unit.defense_established: established += 1
+		inbound += battle.squad_commands.count_members(squad)-living.filter(func(unit): return unit.defense_established).size()
+	event("DEFENSIVE_POINT_BROKEN",{"point_id":id,"team":point.team,"combat":combat,"established_defenders_before_break":point.established,"living_established_at_break":established,"living_assigned_squads_before_break":living_squads,"living_assigned_squad_count_before_break":living_squads.size(),"surviving_defenders_at_break":survivors,"inbound_defenders_at_break":inbound,"break_cause":cause})
+	point_deleted(id,"COMBAT_BREAK" if combat else "CAPACITY_POP")
 
 func point_absorbed(weak_id: int, strong_id: int) -> void:
 	if not enabled: return
@@ -343,6 +405,15 @@ func point_absorbed(weak_id: int, strong_id: int) -> void:
 	point_records[weak_id].was_absorbed = true
 	point_records[weak_id].deleted_time = clock
 	event("DEFENSIVE_POINT_ABSORBED",{"point_id":weak_id,"absorbed_by_point_id":strong_id})
+	point_deleted(weak_id,"ABSORBED")
+
+func point_deleted(id: int, reason: String) -> void:
+	if not enabled: return
+	if not point_records.has(id): point_changed(id)
+	if not point_records.has(id) or point_records[id].has("delete_reason"): return
+	point_records[id].deleted_time = clock
+	point_records[id].delete_reason = reason
+	event("DEFENSIVE_POINT_DELETED",{"point_id":id,"delete_reason":reason})
 
 func order(squad: BattleSquad, kind: String, route: PackedVector2Array) -> void:
 	if not enabled: return
@@ -356,12 +427,14 @@ func order(squad: BattleSquad, kind: String, route: PackedVector2Array) -> void:
 	for waypoint in route:
 		length += previous.distance_to(waypoint)
 		previous = waypoint
-	if route.is_empty() and kind == "DEFEND": length = origin.distance_to(squad.defense_center)
+	if route.is_empty():
+		previous = squad.defense_center if kind == "DEFEND" else Vector2(origin.x,battle.get_node("MapTest").get_tile_size() if squad.team == 2 else battle.field_size.y-battle.get_node("MapTest").get_tile_size())
+		length = origin.distance_to(previous)
 	var record := {"order_id":next_order,"squad_id":squad.squad_id,"kind":kind,"issued_time":clock,
-		"route_waypoints":plain(route),"destination":plain(previous if not route.is_empty() else squad.defense_center),
+		"route_waypoints":plain(route),"destination":plain(previous),
 		"route_requested_length":length,"straight_line_distance":origin.distance_to(previous),"arrival_time":null,
 		"destination_reached":false,"end_reason":null,"actual_distance_travelled":0.0,"soldier_distance_travelled":0.0,"repath_count":0,"stuck_time":0.0,
-		"stationary_seconds":0.0,"stuck":false,"last_centroid":plain(origin)}
+		"stationary_seconds":0.0,"stuck":false,"last_centroid":plain(origin),"net_route_progress":0.0,"positive_route_progress":0.0,"negative_progress_distance":0.0,"route_progress_efficiency":0.0,"progress_samples":[],"pathing_friction_time":0.0,"pathing_friction_events":0,"friction_seconds":0.0,"friction":false}
 	next_order += 1
 	data.orders.append(record)
 	active_paths[squad.squad_id] = record
@@ -370,6 +443,12 @@ func order(squad: BattleSquad, kind: String, route: PackedVector2Array) -> void:
 func close_path(id: int, reason: String) -> void:
 	if not active_paths.has(id): return
 	var record: Dictionary = active_paths[id]
+	if record.friction: event("PATHING_FRICTION_ENDED",{"order_id":record.order_id,"squad_id":id,"reason":reason})
+	record.mean_progress_efficiency = record.net_route_progress/record.actual_distance_travelled if record.actual_distance_travelled > 0 else 0.0
+	var samples: Array = record.progress_samples.duplicate()
+	samples.sort()
+	record.median_progress_efficiency = samples[samples.size()/2] if not samples.is_empty() else 0.0
+	if not samples.is_empty() and samples.size()%2 == 0: record.median_progress_efficiency = (samples[samples.size()/2-1]+samples[samples.size()/2])*0.5
 	if record.stuck: event("SQUAD_STUCK_ENDED",{"order_id":record.order_id,"squad_id":id,"reason":reason})
 	record.end_reason = reason
 	record.end_time = clock
@@ -395,22 +474,55 @@ func tick(delta: float) -> void:
 		var spread := 0.0
 		var maximum := 0.0
 		var fighting := false
+		var roles := {}
 		var arrived := true
 		for unit in members:
 			var distance: float = center.distance_to(unit.position)
+			if not roles.has(unit.unit_type): roles[unit.unit_type] = {"count":0,"mean_forward_offset_from_squad_centroid":0.0,"mean_lateral_offset":0.0}
+			roles[unit.unit_type].count += 1
+			roles[unit.unit_type].mean_forward_offset_from_squad_centroid += (unit.position.y-center.y)*(-1 if squad.team == 2 else 1)
+			roles[unit.unit_type].mean_lateral_offset += unit.position.x-center.x
 			spread += distance
 			maximum = maxf(maximum,distance)
 			fighting = fighting or unit.is_attacking
 			if squad.intent == "DEFEND": arrived = arrived and unit.defense_established
 			else: arrived = arrived and squad.route_indices.get(unit.squad_member_index,0) >= squad.route_waypoints.size()
-		squad_records[squad.squad_id].samples.append({"timestamp":clock,"centroid":plain(center),"average_member_distance_from_centroid":spread/members.size(),"max_member_distance_from_centroid":maximum,"living_member_count":members.size(),"intent":squad.intent})
+		for role in roles.values():
+			role.mean_forward_offset_from_squad_centroid /= role.count
+			role.mean_lateral_offset /= role.count
+		squad_records[squad.squad_id].samples.append({"component_roles":roles,"timestamp":clock,"centroid":plain(center),"average_member_distance_from_centroid":spread/members.size(),"max_member_distance_from_centroid":maximum,"living_member_count":members.size(),"intent":squad.intent})
 		if not active_paths.has(squad.squad_id): continue
 		var path: Dictionary = active_paths[squad.squad_id]
+		var previous := Vector2(path.last_centroid[0],path.last_centroid[1])
+		var motion := center.distance_to(previous)
+		path.actual_distance_travelled += motion
+		var waypoint := Vector2(path.destination[0],path.destination[1])
+		if not squad.route_waypoints.is_empty():
+			var index: int = squad.route_waypoints.size()-1
+			for unit in members: index = mini(index,squad.route_indices.get(unit.squad_member_index,0))
+			waypoint = squad.route_waypoints[index]
+		var progress := previous.distance_to(waypoint)-center.distance_to(waypoint)
+		path.net_route_progress += progress
+		path.positive_route_progress += maxf(0,progress)
+		path.negative_progress_distance += maxf(0,-progress)
+		path.route_progress_efficiency = path.positive_route_progress/path.actual_distance_travelled if path.actual_distance_travelled > 0 else 0.0
+		var efficiency: float = progress/motion if motion > 0.001 else 0.0
+		if motion > 0.001: path.progress_samples.append(efficiency)
+		var settled: bool = arrived and (squad.intent == "DEFEND" or not squad.route_waypoints.is_empty())
+		var eligible: bool = not fighting and not settled and not squad.retreating
+		var friction: bool = eligible and motion > battle.tuning.friction_minimum_motion and efficiency < battle.tuning.progress_efficiency_threshold
+		path.friction_seconds = path.friction_seconds+interval if friction else 0.0
+		var active: bool = path.friction_seconds >= battle.tuning.friction_time_threshold
+		if active != path.friction:
+			event("PATHING_FRICTION_STARTED" if active else "PATHING_FRICTION_ENDED",{"order_id":path.order_id,"squad_id":squad.squad_id})
+			if active: path.pathing_friction_events += 1
+		path.friction = active
+		if active:
+			path.pathing_friction_time += interval
+			for unit in members: add(unit,"pathing_friction_time",interval)
 		if arrived and (squad.intent == "DEFEND" or not squad.route_waypoints.is_empty()):
 			close_path(squad.squad_id,"arrived")
 			continue
-		var previous := Vector2(path.last_centroid[0],path.last_centroid[1])
-		path.actual_distance_travelled += center.distance_to(previous)
 		var stationary: bool = not fighting and not squad.retreating and center.distance_to(previous) < battle.tuning.stuck_distance_threshold
 		path.stationary_seconds = path.stationary_seconds+interval if stationary else 0.0
 		var stuck: bool = path.stationary_seconds >= battle.tuning.stuck_time_threshold
@@ -431,8 +543,7 @@ func tick(delta: float) -> void:
 		point_records[id].samples.append(sample)
 	for id in point_records:
 		if not battle.squad_commands.orders.has(id) and point_records[id].deleted_time == null:
-			point_records[id].deleted_time = clock
-			event("DEFENSIVE_POINT_DELETED",{"point_id":id})
+			point_deleted(id,"NO_DEFENDERS_OR_INBOUND")
 	for key in doctrine_summary:
 		var count: int = battle.enemy_controller.defender_count(key)
 		var summary: Dictionary = doctrine_summary[key]
@@ -451,6 +562,7 @@ func economy_tick(team: int, generated: float, wasted: float, cap_seconds: float
 
 func finish(winner: int, reason: String) -> void:
 	if not enabled or closed: return
+	roll_up_observations()
 	for id in active_paths.keys(): close_path(id,"match_ended")
 	for record in squad_records.values():
 		if record.end_time == null:
