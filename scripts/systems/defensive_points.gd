@@ -258,6 +258,7 @@ func update(delta: float, force: bool = false) -> void:
 
 func absorb(weak_id: int, strong_id: int) -> void:
 	if not commands.orders.has(weak_id) or not commands.orders.has(strong_id): return
+	if battle.telemetry != null: battle.telemetry.point_absorbed(weak_id,strong_id)
 	var weak: Dictionary = commands.orders[weak_id]
 	var strong: Dictionary = commands.orders[strong_id]
 	for anchor in weak.anchors:

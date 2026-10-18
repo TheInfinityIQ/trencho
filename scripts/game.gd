@@ -28,6 +28,7 @@ const COMMAND_UI = preload("res://scripts/ui/squad_command_ui.gd")
 	preload("res://data/cards/rifle_squad.tres"), preload("res://data/cards/assault_squad.tres"),
 	preload("res://data/cards/conscript_wave.tres"), preload("res://data/cards/commander_mojo.tres"),
 	preload("res://data/cards/forced_march.tres"), preload("res://data/cards/defensive_officer.tres")]
+var telemetry: RefCounted
 var unit_rng := RandomNumberGenerator.new()
 var card_catalog: Dictionary = {}
 var economies: Dictionary = {}
@@ -108,6 +109,9 @@ func _ready() -> void:
 	shader.code = "shader_type canvas_item; void fragment() { vec4 pixel = texture(TEXTURE, UV); float grey = dot(pixel.rgb, vec3(0.299, 0.587, 0.114)); COLOR = vec4(vec3(0.55 + grey * 0.35), pixel.a * 0.72); }"
 	ghost_material = ShaderMaterial.new()
 	ghost_material.shader = shader
+	telemetry = preload("res://scripts/systems/combat_telemetry.gd").new(self)
+	deployment_accepted.connect(telemetry.committed)
+	unit_spawned.connect(telemetry.spawned)
 	var layer := CanvasLayer.new()
 	layer.layer = 2
 	add_child(layer)
@@ -132,6 +136,7 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if not battle_active:
 		return
+	telemetry.tick(delta)
 	for economy in economies.values():
 		economy.tick(delta)
 	formation_manager.tick(delta)
@@ -302,6 +307,7 @@ func score_unit(unit: Unit) -> void:
 		finish_battle(team, "Score target reached")
 
 func unregister_unit(unit: Unit, killed: bool = true) -> void:
+	telemetry.removed(unit,killed)
 	formation_manager.release_unit(unit)
 	formation_manager.untrack_unit(unit)
 	units.erase(unit)
@@ -324,6 +330,7 @@ func finish_battle(winning_team: int, reason: String) -> void:
 	for unit in units:
 		if is_instance_valid(unit):
 			unit.set_physics_process(false)
+	telemetry.finish(winner,reason)
 	battle_ended.emit(winner, reason)
 
 func restart_battle() -> void:

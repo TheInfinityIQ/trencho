@@ -61,6 +61,7 @@ func _draw_card() -> bool:
 	if draw_pile.is_empty():
 		return false
 	cards.append(draw_pile.pop_back())
+	if game.telemetry != null and game.telemetry.enabled: game.telemetry.data.economy["2"].cards_drawn += 1
 	return true
 
 func _refill_hand() -> void:

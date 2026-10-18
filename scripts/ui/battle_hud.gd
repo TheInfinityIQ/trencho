@@ -70,6 +70,21 @@ func _ready() -> void:
 	restart.text = "Play again"
 	restart.pressed.connect(game.restart_battle)
 	column.add_child(restart)
+	if OS.is_debug_build():
+		var folder := Button.new()
+		folder.text = "Open combat log folder"
+		folder.pressed.connect(func(): OS.shell_open(ProjectSettings.globalize_path("user://combat_logs")))
+		column.add_child(folder)
+		var copy := Button.new()
+		copy.text = "Copy match summary"
+		copy.pressed.connect(func(): DisplayServer.clipboard_set(game.telemetry.summary_text()))
+		column.add_child(copy)
+		var retry := Button.new()
+		retry.text = "Save / retry combat log"
+		retry.pressed.connect(func():
+			game.telemetry.save()
+			_on_battle_ended(game.winner,game.end_reason))
+		column.add_child(retry)
 	game.battle_ended.connect(_on_battle_ended)
 	get_viewport().size_changed.connect(_layout)
 	_layout()
@@ -186,6 +201,8 @@ Clock: queued | Arrow: entry/advance | Crosshair: combat")
 func _on_battle_ended(winner: int, reason: String) -> void:
 	result_title.text = "Victory" if winner == 2 else ("Defeat" if winner == 1 else "Draw")
 	result_reason.text = reason
+	if game.telemetry.enabled:
+		result_reason.text += "\nCombat log saved" if not game.telemetry.export_path.is_empty() else "\n"+game.telemetry.export_error
 	result_panel.visible = true
 
 func _draw() -> void:

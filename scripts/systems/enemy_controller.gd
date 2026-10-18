@@ -86,6 +86,7 @@ func decide() -> void:
 		rectangle.size.y += battle.tuning.spawn_spacing
 	var result: Dictionary = battle.deployment_manager.request_squad(1, package, rectangle, "ADVANCE")
 	if result.is_valid:
+		battle.telemetry.event("AI_DEPLOYMENT_DECISION",{"available_command":battle.economies[1].current_command+result.total_cost,"cards_chosen":result.resolved_deployment.squad.source_cards.map(func(card): return card.card_id),"package_cost":result.total_cost,"reason":last_decision,"squad_id":result.resolved_deployment.squad.squad_id})
 		deployment_cooldown = maxf(1.0,battle.tuning.enemy_decision_interval)
 		uncommitted.append(result.resolved_deployment.squad.squad_id)
 		chosen_lane = lane
@@ -129,9 +130,12 @@ func _assign_available() -> void:
 			continue
 		uncommitted.erase(id)
 		reinforcement_priority = key if not key.is_empty() else "Advance"
-		if key.is_empty(): continue
+		if key.is_empty():
+			battle.telemetry.event("AI_ASSIGNMENT",{"squad_id":id,"reason":"ADVANCE_EXCESS"})
+			continue
 		var target_id: int = doctrine_points.get(key,-1)
 		var response: Dictionary = battle.squad_commands.issue_group([squad],"DEFEND",anchor(key),0,PackedVector2Array(),target_id)
 		if response.success:
+			battle.telemetry.event("AI_ASSIGNMENT",{"squad_id":id,"reason":("REINFORCE_" if target_id >= 0 else "ESTABLISH_")+key.to_upper(),"point_id":response.defensive_point_id})
 			doctrine_points[key] = response.defensive_point_id
 			battle.squad_commands.points.update(0,true)

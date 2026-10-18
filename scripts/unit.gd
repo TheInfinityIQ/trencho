@@ -4,6 +4,7 @@ class_name Unit
 signal died(unit: Unit)
 enum State { ADVANCING, ENGAGING, DEAD, ENTERING_BATTLEFIELD, CAPTURING, EXITING, MOVING_TO_DEFEND, DEFENDING, RETURNING_TO_DEFENSE, RETREATING }
 var state: State = State.ADVANCING
+var telemetry_id := 0
 var team_id: int = 2
 var lane_id: int = 1
 var battle: Node
@@ -104,6 +105,11 @@ func is_alive() -> bool:
 	return state != State.DEAD and state != State.EXITING and current_health > 0 and not is_queued_for_deletion()
 
 func _physics_process(delta: float) -> void:
+	if not is_instance_valid(battle) or not battle.battle_active or not is_alive(): return
+	_simulate(delta)
+	battle.telemetry.observe_unit(self,delta)
+
+func _simulate(delta: float) -> void:
 	if not is_alive() or (is_instance_valid(battle) and not battle.battle_active):
 		return
 	spawn_age += delta
@@ -185,11 +191,14 @@ func _update_entry_status() -> void:
 		if state == State.ENTERING_BATTLEFIELD:
 			state = State.ADVANCING
 
-func apply_damage(amount: float) -> void:
+func apply_damage(amount: float, attacker: Unit = null, source: String = "external") -> void:
 	if not is_alive():
 		return
 	if squad != null and squad.retreating: amount *= battle.tuning.rout_damage_multiplier
+	amount = maxf(0,amount)
+	var before := current_health
 	current_health = maxf(0, current_health - amount)
+	battle.telemetry.damage(attacker,self,amount,before,current_health,source)
 	update_health_bar()
 	if current_health <= 0:
 		die()
@@ -245,7 +254,7 @@ func _fire_at_target() -> void:
 		if not melee: spawn_smoke_at_weapon(global_position.direction_to(target.global_position))
 		battle.squad_commands.record_damage(self,target)
 		var multiplier: float = battle.tuning.breakthrough_damage_multiplier if squad != null and squad.breakthrough_remaining > 0 else 1.0
-		target.apply_damage((attack_melee_strength if melee else attack_ranged_strength)*multiplier)
+		target.apply_damage((attack_melee_strength if melee else attack_ranged_strength)*multiplier,self,"melee" if melee else "ranged")
 
 func _defend_tick(delta: float) -> void:
 	var destination: Vector2 = squad.defense_positions.get(squad_member_index, squad.defense_center)
@@ -346,4 +355,5 @@ func _retreat_tick(delta: float) -> void:
 		if (member.global_position.y < home_y-15 if team_id == 2 else member.global_position.y > home_y+15): recovered = false
 	if recovered:
 		squad.retreating = false
+		battle.telemetry.rout_ended(squad)
 		for member in squad.living_members(): member.state = State.ADVANCING

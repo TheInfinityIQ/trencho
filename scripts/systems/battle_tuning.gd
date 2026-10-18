@@ -61,3 +61,9 @@ class_name BattleTuning
 @export_range(0.05, 1) var planning_transition_out_duration: float = 0.25
 @export_range(0, 1) var planning_desaturation_amount: float = 0.85
 @export_range(0.5, 1) var planning_brightness_adjustment: float = 0.88
+
+@export_group("Combat telemetry")
+@export var telemetry_enabled: bool = true
+@export_range(0.1, 5) var telemetry_sample_interval: float = 1.0
+@export var stuck_distance_threshold: float = 10.0
+@export var stuck_time_threshold: float = 2.0

@@ -26,6 +26,7 @@ func create_squad(specification: Dictionary) -> BattleSquad:
 	squad.source_cards = specification.get("source_cards", []).duplicate()
 	squads[squad.squad_id] = squad
 	specification["squad"] = squad
+	if battle.telemetry != null: battle.telemetry.squad_created(specification)
 	return squad
 
 func count_members(squad: BattleSquad) -> int:
@@ -101,6 +102,7 @@ func prune() -> void:
 			if selected_ids.has(id):
 				selected_ids.erase(id)
 				changed = true
+			if battle.telemetry != null: battle.telemetry.squad_ended(id)
 			squads.erase(id)
 	if changed: selection_changed.emit()
 	for id in orders.keys():
@@ -164,9 +166,11 @@ func apply_validated(group: Array, kind: String, plan: Dictionary = {}, route: P
 		response.defense_radius = plan.defense_radius
 		response.expanded = plan.expanded
 		response.defensive_point_id = shared_id
+	if kind == "DEFEND" and battle.telemetry != null: battle.telemetry.point_changed(shared_id)
 	response.route = route.duplicate()
 	for squad in group:
 		if orders.has(squad.order_id):
+			battle.telemetry.event("DEFENSIVE_POINT_LEFT",{"point_id":squad.order_id,"squad_id":squad.squad_id})
 			orders[squad.order_id].dirty = true
 			orders[squad.order_id].squads.erase(squad.squad_id)
 		squad.intent = kind
@@ -185,6 +189,7 @@ func apply_validated(group: Array, kind: String, plan: Dictionary = {}, route: P
 			squad.route_offsets[unit.squad_member_index] = (unit.global_position-front).limit_length(battle.tuning.cohesion_leash*0.6)
 		response.affected_squad_ids.append(squad.squad_id)
 		if kind == "DEFEND":
+			battle.telemetry.event("DEFENSIVE_POINT_JOINED",{"point_id":shared_id,"squad_id":squad.squad_id})
 			squad.defense_center = plan.defense_center
 			squad.defense_radius = plan.defense_radius
 			orders[shared_id].squads.append(squad.squad_id)
@@ -193,6 +198,8 @@ func apply_validated(group: Array, kind: String, plan: Dictionary = {}, route: P
 			unit.defense_established = false
 			unit.target = null
 			unit.state = Unit.State.MOVING_TO_DEFEND if kind == "DEFEND" else (Unit.State.ADVANCING if unit.has_entered_battlefield else Unit.State.ENTERING_BATTLEFIELD)
+	if battle.telemetry != null:
+		for squad in group: battle.telemetry.order(squad,kind,route)
 	if kind == "DEFEND": _repack(shared_id)
 	prune()
 	points.clock = 0
@@ -297,26 +304,30 @@ func record_damage(attacker: Unit, defender: Unit) -> void:
 	if attacker.squad == null or defender.squad == null or not orders.has(defender.squad.order_id): return
 	orders[defender.squad.order_id].contributors[attacker.squad.squad_id] = simulation_time
 
-func award_breakthrough(squad: BattleSquad) -> void:
+func award_breakthrough(squad: BattleSquad, broken_point_id: int = -1) -> void:
+	var was_buffed := squad.breakthrough_remaining > 0
 	var heal_budget := 0.0
 	var unused := 0.0
 	for unit in squad.living_members():
 		var heal: float = unit.total_health*battle.tuning.breakthrough_heal_fraction
 		var actual := minf(heal,unit.total_health-unit.current_health)
 		unit.current_health += actual
+		battle.telemetry.add(unit,"healing_received",actual)
 		unit.update_health_bar()
 		heal_budget += heal
 		unused += heal-actual
 	var duration: float = battle.tuning.breakthrough_duration*(1.0+unused/maxf(0.001,heal_budget))
 	var cap: float = battle.tuning.breakthrough_duration*battle.tuning.breakthrough_duration_cap
 	squad.breakthrough_remaining = minf(cap,maxf(squad.breakthrough_remaining,duration))
+	battle.telemetry.event("BREAKTHROUGH_REFRESHED" if was_buffed else "BREAKTHROUGH_GRANTED",{"defensive_point_broken":broken_point_id,"eligible_squad_id":squad.squad_id,"living_members_buffed":squad.living_members().size(),"heal_budget":heal_budget,"actual_healing":heal_budget-unused,"unused_healing":unused,"base_duration":battle.tuning.breakthrough_duration,"bonus_duration_from_unused_heal":duration-battle.tuning.breakthrough_duration,"final_duration":squad.breakthrough_remaining,"damage_bonus":battle.tuning.breakthrough_damage_multiplier-1.0,"fire_rate_bonus":0.0})
 
 func break_point(id: int, combat: bool = true) -> void:
 	if not orders.has(id): return
 	var point: Dictionary = orders[id]
+	if battle.telemetry != null: battle.telemetry.point_broken(id,combat)
 	if combat:
 		for squad_id in point.contributors:
-			if squads.has(squad_id) and simulation_time-point.contributors[squad_id] <= battle.tuning.breakthrough_contribution_window: award_breakthrough(squads[squad_id])
+			if squads.has(squad_id) and simulation_time-point.contributors[squad_id] <= battle.tuning.breakthrough_contribution_window: award_breakthrough(squads[squad_id],id)
 	for squad_id in point.squads:
 		if not squads.has(squad_id): continue
 		var squad: BattleSquad = squads[squad_id]
@@ -326,6 +337,7 @@ func break_point(id: int, combat: bool = true) -> void:
 		squad.defense_positions.clear()
 		squad.defense_radius = 0
 		squad.retreating = combat and not squad.living_members().is_empty()
+		if squad.retreating: battle.telemetry.rout_started(squad,id)
 		for unit in squad.living_members():
 			unit.defense_established = false
 			unit.target = null
