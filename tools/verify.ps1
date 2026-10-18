@@ -2,8 +2,8 @@
 [CmdletBinding()]
 param(
     [string]$GodotPath = $env:GODOT_BIN,
-    [ValidateSet('defensive_front', 'ai_flow', 'mirror_mode', 'next_pass', 'defensive_combat', 'combat_telemetry', 'territory_performance', 'drawn_command_v02', 'retired_box', 'movement_recovery', 'pathing_trials', 'defense_regression', 'defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak')]
-    [string[]]$Suite = @('defensive_front', 'ai_flow', 'mirror_mode', 'next_pass', 'defensive_combat', 'combat_telemetry', 'territory_performance', 'drawn_command_v02', 'retired_box', 'movement_recovery', 'pathing_trials', 'defense_regression', 'defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak'),
+    [ValidateSet('ui_clarity', 'defensive_front', 'ai_flow', 'mirror_mode', 'next_pass', 'defensive_combat', 'combat_telemetry', 'territory_performance', 'drawn_command_v02', 'retired_box', 'movement_recovery', 'pathing_trials', 'defense_regression', 'defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak')]
+    [string[]]$Suite = @('ui_clarity', 'defensive_front', 'ai_flow', 'mirror_mode', 'next_pass', 'defensive_combat', 'combat_telemetry', 'territory_performance', 'drawn_command_v02', 'retired_box', 'movement_recovery', 'pathing_trials', 'defense_regression', 'defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak'),
     [switch]$FreshImport,
     [ValidateRange(1, 600)][int]$TimeoutSeconds = 300
 )
@@ -89,6 +89,7 @@ try {
         defensive_front = 'DEFENSIVE FRONT: \d+ assertions, PASSED'
         ai_flow = 'AI FLOW: \d+ assertions, PASSED'
         mirror_mode = 'MIRROR MODE: \d+ assertions, PASSED'
+        ui_clarity = 'UI CLARITY: \d+ assertions, PASSED'
         next_pass = 'NEXT PASS: \d+ assertions, PASSED'
         defensive_combat = 'DEFENSIVE COMBAT: \d+ assertions, PASSED'
         combat_telemetry = 'COMBAT TELEMETRY: \d+ assertions, PASSED'

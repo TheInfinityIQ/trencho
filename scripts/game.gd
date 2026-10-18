@@ -228,7 +228,7 @@ func _camera_point_allowed(point: Vector2) -> bool:
 	if not battlefield_view_rect().has_point(point):
 		return false
 	if is_instance_valid(hud):
-		for control in [hud.camera_toolbar, hud.debug_panel, hud.result_panel]:
+		for control in [hud.camera_toolbar, hud.debug_panel, hud.result_panel, hud.controls_help]:
 			if control.visible and control.get_global_rect().has_point(point):
 				return false
 	return true

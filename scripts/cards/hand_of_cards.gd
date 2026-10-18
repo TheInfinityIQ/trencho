@@ -33,10 +33,21 @@ var footprint_anchor := Vector2.ZERO
 var footprint_press_world := Vector2.ZERO
 var footprint_before_edit := Rect2()
 var preview_elapsed := 0.0
+var package_label: Label
+var context_label: Label
 const CARD_SIZE := Vector2(132, 190)
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	package_label = Label.new()
+	context_label = Label.new()
+	for label in [package_label, context_label]:
+		label.mouse_filter = Control.MOUSE_FILTER_PASS
+		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		add_child(label)
+	package_label.add_theme_font_size_override("font_size", 15)
+	package_label.modulate = Color(0.7, 0.9, 1)
+	context_label.add_theme_font_size_override("font_size", 14)
 	rng.seed = game.tuning.random_seed
 	for id in starting_deck:
 		if game.card_catalog.has(id):
@@ -108,11 +119,13 @@ func _toggle_card(index: int) -> void:
 		card_deselected.emit(cards[index])
 	elif selected_indices.size() >= 3:
 		message = "Maximum three cards per package."
+		game.command_ui.notice = message
 		return
 	elif cards[index].card_type == BattleCard.Type.UNIT:
 		var unit_count := selected_indices.size()-_modifier_count()
 		if unit_count >= 2 or not _unit_compatible(index):
 			message = "Maximum two compatible Unit cards."
+			game.command_ui.notice = message
 			return
 		selected_indices.append(index)
 		card_selected.emit(cards[index])
@@ -121,8 +134,10 @@ func _toggle_card(index: int) -> void:
 		card_selected.emit(cards[index])
 	else:
 		message = "Too many or incompatible Modifiers."
+		game.command_ui.notice = message
 		return
 	message = "Click battlefield for blueprint. First Unit has front priority; second has rear priority."
+	if is_instance_valid(game.command_ui): game.command_ui.clear_notice()
 	_animate_selection()
 	_update_preview(get_viewport().get_mouse_position())
 
@@ -185,6 +200,8 @@ func _discard_selected() -> bool:
 	var count := selected_indices.size()
 	_consume(selected_indices)
 	message = "Discarded %d card(s) and drew replacements" % count
+	game.command_ui.clear_notice()
+	game.command_ui.notice = message + ". Select cards to deploy."
 	return true
 
 func _evaluate_footprint() -> Dictionary:
@@ -219,6 +236,7 @@ func _update_preview(point: Vector2) -> void:
 		preview_failure = ""
 
 func _process(delta: float) -> void:
+	_update_readout()
 	preview_elapsed += delta
 	if not selected_indices.is_empty() and preview_elapsed >= 0.1:
 		preview_elapsed = 0.0
@@ -358,27 +376,51 @@ func _notification(what: int) -> void:
 
 func package_description() -> String:
 	if selected_indices.is_empty():
-		return "Select cards then click the battlefield for a squad blueprint; click soldiers to re-command squads"
+		if not game.squad_commands.selected_ids.is_empty(): return "SELECTED FORCE  ·  " + game.command_ui.selection_text()
+		return "DEPLOYMENT  ·  Select up to 3 cards: 1–2 Units and compatible Modifiers"
 	var names: Array[String] = []
 	for card in selected_cards():
 		names.append(card.display_name)
 	var result: Dictionary = game.deployment_manager.resolve_package(selected_cards())
 	if not result.is_valid:
 		return " + ".join(names) + " | " + ("Choose a compatible Unit card" if result.failure_reason == "NO_UNIT_CARD" else result.failure_reason)
-	return "%s | Units %d -> %d | Command %.0f -> %.0f" % [" + ".join(names), result.resolved_deployment.base_quantity, result.resolved_deployment.quantity, cards[_unit_index()].command_cost, result.total_cost]
+	var stats: Dictionary = result.resolved_deployment
+	var quantity := "%d soldiers" % stats.quantity
+	if stats.base_quantity != stats.quantity: quantity += " (%d base)" % stats.base_quantity
+	var available: float = game.economies[2].current_command
+	var cost := "Cost %.0f · Available %.1f" % [result.total_cost, available]
+	if available < result.total_cost: cost += " · Need %.1f more" % (result.total_cost - available)
+	return "%s  |  %s  |  %s" % [cost, quantity, " + ".join(names)]
+
+func package_details() -> String:
+	var resolved: Dictionary = game.deployment_manager.resolve_package(selected_cards())
+	if not resolved.is_valid: return package_description()
+	# Keep tooltip content stable while Command regenerates, so it remains inspectable.
+	var lines: Array[String] = ["DEPLOYMENT DETAILS · Cost %.0f Command · %d soldiers" % [resolved.total_cost, resolved.resolved_deployment.quantity]]
+	var components: Array = resolved.resolved_deployment.components
+	for index in range(components.size()):
+		var component: Dictionary = components[index]
+		var role := "Front priority" if index == 0 else "Rear priority"
+		lines.append("%s: %s ×%d · %.0f HP · %.1f DPS · Speed %.0f" % [role, component.unit_type.replace("_", " ").capitalize(), component.quantity, component.health, component.damage / maxf(component.attack_interval, 0.001), component.move_speed])
+	if components.size() > 1: lines.append("Travel uses the slowest living member; combat uses each soldier's native stats.")
+	return "\n".join(lines)
+
+func _update_readout() -> void:
+	var screen := get_viewport_rect().size
+	package_label.position = Vector2(16, screen.y - 267)
+	package_label.size = Vector2(screen.x - 32, 22)
+	package_label.text = package_description()
+	package_label.tooltip_text = package_details()
+	context_label.position = Vector2(16, screen.y - 245)
+	context_label.size = Vector2(screen.x - 32, 20)
+	context_label.text = game.command_ui.context_text()
+	context_label.tooltip_text = game.command_ui.context_details()
+	context_label.modulate = Color(1, 0.8, 0.5) if not game.command_ui.notice.is_empty() else Color(0.9, 0.9, 0.9)
 
 func _draw() -> void:
 	var screen := get_viewport_rect().size
 	var font := ThemeDB.fallback_font
 	draw_rect(Rect2(0, screen.y - 270, screen.x, 270), Color(0.045, 0.065, 0.085, 0.98))
-	draw_string(font, Vector2(16, screen.y - 250), package_description(), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.7, 0.9, 1))
-	var detail := message
-	var resolved: Dictionary = game.deployment_manager.resolve_package(selected_cards())
-	if resolved.is_valid:
-		var stats: Dictionary = resolved.resolved_deployment
-		detail = "Health %.0f | DPS %.1f | Speed %.0f | %s" % [stats.health, stats.damage / maxf(stats.attack_interval, 0.001), stats.move_speed, game.deployment_message(preview_failure) if not preview_failure.is_empty() else message]
-		if stats.components.size() > 1: detail = "Mixed squad: native stats on cards; travel uses slowest living member. | " + message
-	draw_string(font, Vector2(16, screen.y - 233), detail, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 0.8, 0.5) if not preview_failure.is_empty() else Color(0.85, 0.85, 0.85))
 	_paint_piles()
 	for index in range(cards.size()):
 		if not selected_indices.has(index) and index != dragged_index:
@@ -423,7 +465,10 @@ func _paint_card(rect: Rect2, card: BattleCard, index: int) -> void:
 	draw_string(font, rect.position + Vector2(6, 18), card.display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, tint)
 	if card.art:
 		draw_texture_rect(card.art, Rect2(rect.position + Vector2(25, 25), Vector2(82, 110)), false, tint)
-	draw_string(font, rect.position + Vector2(7, 146), "UNIT" if card.card_type == BattleCard.Type.UNIT else "MODIFIER", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, border * tint)
+	var category := "UNIT" if card.card_type == BattleCard.Type.UNIT else "MODIFIER"
+	if selected and card.card_type == BattleCard.Type.UNIT:
+		category = "FRONT" if index == _unit_index() else "REAR"
+	draw_string(font, rect.position + Vector2(7, 146), category, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, border * tint)
 	var effects: Array[String] = []
 	if card.card_type == BattleCard.Type.UNIT:
 		UNIT_SYMBOLS.type_icon(self, rect.position + Vector2(116, 143), 7, card.card_id, tint)

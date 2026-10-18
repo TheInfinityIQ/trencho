@@ -9,6 +9,10 @@ var result_reason: Label
 var debug_button: Button
 var restart_button: Button
 var camera_toolbar: HBoxContainer
+var score_status: Label
+var incoming_status: Label
+var enemy_status: Label
+var controls_help: Label
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -16,6 +20,16 @@ func _ready() -> void:
 	status.position = Vector2(16, 8)
 	status.add_theme_font_size_override("font_size", 16)
 	add_child(status)
+	for field in ["score", "incoming", "enemy"]:
+		var label := Label.new()
+		label.add_theme_font_size_override("font_size", 14)
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(label)
+		match field:
+			"score": score_status = label
+			"incoming": incoming_status = label
+			"enemy": enemy_status = label
+	incoming_status.mouse_filter = Control.MOUSE_FILTER_PASS
 	debug_button = Button.new()
 	debug_button.text = "Debug (F3)"
 	debug_button.pressed.connect(_toggle_debug)
@@ -39,10 +53,18 @@ func _ready() -> void:
 			"Deploy": button.pressed.connect(game.show_deployment)
 			"Fullscreen (F11)": button.pressed.connect(game.toggle_fullscreen)
 		camera_toolbar.add_child(button)
-	var help := Label.new()
-	help.text = "  Scroll: zoom  •  Middle drag / WASD: pan"
-	help.add_theme_font_size_override("font_size", 13)
+	var help := Button.new()
+	help.text = "Controls"
+	help.tooltip_text = "Scroll or +/−: zoom\nMiddle drag / WASD / arrows: pan\nHome: overview · F11: fullscreen\nClick soldier: squad · Shift+click: add/remove squad\nClick friendly shield: defending squads\nDrag white handle: route; close a loop: Defend\nEnd open route in friendly territory: reinforce\nEsc / right-click: back one step\nHover selected package summary: modified unit stats"
+	help.pressed.connect(func(): controls_help.visible = not controls_help.visible)
 	camera_toolbar.add_child(help)
+	controls_help = Label.new()
+	controls_help.text = help.tooltip_text
+	controls_help.visible = false
+	controls_help.mouse_filter = Control.MOUSE_FILTER_STOP
+	controls_help.position = Vector2(16, 112)
+	controls_help.add_theme_stylebox_override("normal", _help_style())
+	add_child(controls_help)
 	debug_panel = RichTextLabel.new()
 	debug_panel.visible = false
 	debug_panel.add_theme_font_size_override("normal_font_size", 14)
@@ -93,6 +115,11 @@ func _ready() -> void:
 func _layout() -> void:
 	var screen := get_viewport_rect().size
 	camera_toolbar.position = Vector2(16, 72)
+	status.position = Vector2(16, 6)
+	status.size = Vector2(320, 24)
+	score_status.position = Vector2(16, 34)
+	incoming_status.position = Vector2(maxf(350, screen.x * 0.40), 6)
+	enemy_status.position = Vector2(maxf(350, screen.x * 0.40), 34)
 	debug_button.position = Vector2(screen.x - 205, 12)
 	debug_button.size = Vector2(105, 34)
 	restart_button.position = Vector2(screen.x - 90, 12)
@@ -115,9 +142,13 @@ func _unhandled_key_input(event: InputEvent) -> void:
 func _process(_delta: float) -> void:
 	var player = game.economies[2]
 	var enemy = game.economies[1]
-	status.text = "COMMAND  %.1f / %.0f   (+%.1f/s)     Enemy %.1f / %.0f\nSCORE  You %d  :  %d Enemy    |    Target %d" % [player.current_command, player.maximum_command, player.command_regeneration_rate, enemy.current_command, enemy.maximum_command, game.scores[2], game.scores[1], game.tuning.victory_score]
+	status.text = "COMMAND  %.1f / %.0f  %s" % [player.current_command, player.maximum_command, "· FULL" if player.current_command >= player.maximum_command else "(+%.1f/s)" % player.command_regeneration_rate]
+	score_status.text = "SCORE  You %d : %d Enemy  ·  Target %d" % [game.scores[2], game.scores[1], game.tuning.victory_score]
+	enemy_status.text = "Enemy Command %.1f / %.0f" % [enemy.current_command, enemy.maximum_command]
+	enemy_status.modulate = Color(0.75,0.78,0.8)
 	var flow: Dictionary = game.formation_manager.flow_counts(2)
-	status.text += "    |    Incoming %d" % flow.incoming
+	incoming_status.text = "INCOMING  %d" % flow.incoming
+	incoming_status.tooltip_text = "Queued %d · Entering %d\nIncoming soldiers are not all combat-ready yet." % [flow.queued, flow.entering]
 	if debug_panel.visible:
 		_update_debug()
 
@@ -208,3 +239,9 @@ func _on_battle_ended(winner: int, reason: String) -> void:
 
 func _draw() -> void:
 	draw_rect(Rect2(0, 0, get_viewport_rect().size.x, 66), Color(0.04, 0.06, 0.08, 0.97))
+
+func _help_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.025,0.04,0.06,0.98)
+	style.set_content_margin_all(12)
+	return style
