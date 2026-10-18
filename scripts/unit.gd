@@ -172,7 +172,7 @@ func nearest_enemy() -> Unit:
 		if not candidates.has(body):
 			candidates.append(body)
 	for body in candidates:
-		if body is Unit and body.team_id != team_id and body.is_alive() and _defense_target_allowed(body):
+		if body is Unit and body.team_id != team_id and body.is_alive():
 			var distance := global_position.distance_squared_to(body.global_position)
 			if distance < nearest_distance:
 				nearest_distance = distance
@@ -240,7 +240,8 @@ func begin_exit() -> void:
 func _base_debug_description() -> String:
 	return "%s | Team %d | %s\nInterval base %.3fs / spawned %.3fs\nSpeed base %.1f / spawned %.1f | Range %.0f\nTarget: %s\nEntry origin: %s | On field: %s\nQueue wait %.2fs | Since spawn %.2fs | Entry total %.2fs\nCapturing: %s" % [unit_type, team_id, State.keys()[state], base_attack_interval, attack_interval, base_move_speed, move_speed, attack_range, str(target.get_instance_id()) if is_instance_valid(target) else "none", assigned_formation_slot, has_entered_battlefield, queue_wait, spawn_age, entry_elapsed, state == State.CAPTURING]
 
-func _defense_target_allowed(enemy: Unit) -> bool:
+func _defense_pursuit_allowed(enemy: Unit) -> bool:
+	# Territory restricts movement and pursuit, not shots within weapon range.
 	return squad == null or squad.intent != "DEFEND" or not defense_established or battle.squad_commands.inside_defense(squad,enemy.global_position)
 
 func _fire_at_target() -> void:
@@ -270,7 +271,7 @@ func _defend_tick(delta: float) -> void:
 	if defense_established:
 		var distance := INF
 		for enemy in battle.squad_commands.defense_enemies(squad):
-			if is_instance_valid(enemy) and enemy.is_alive() and _defense_target_allowed(enemy):
+			if is_instance_valid(enemy) and enemy.is_alive() and _defense_pursuit_allowed(enemy):
 				var candidate: float = global_position.distance_squared_to(enemy.global_position)
 				if candidate < distance:
 					distance = candidate

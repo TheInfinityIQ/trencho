@@ -143,7 +143,7 @@ func run() -> void:
 	check(commands.selected_ids.is_empty() and not ui.gesture_active and not game.planning.active and ui.failure_reason == "SQUAD_DESTROYED", "all selected casualties terminate command safely")
 	clear()
 	await frames()
-	# A defender fights en route, filters targets by leash once established,
+	# A defender fights en route and returns fire across the territory boundary,
 	# repositions only inside the circle and returns after combat/casualties.
 	var defenders: Array = squad("rifle_squad",2,Vector2(3000,4300),3)
 	commands.select_unit(defenders[0])
@@ -162,9 +162,10 @@ func run() -> void:
 	enemy = squad("rifle_squad",1,Vector2(3200,2500))[0]
 	defenders[0].position = Vector2(3200,2700)
 	await frames()
-	check(defenders[0].nearest_enemy() == null, "established defense does not target an enemy outside the shared circle")
+	check(defenders[0].nearest_enemy() == enemy, "established defense targets in-range enemies outside its territory")
+	var firing_position: Vector2 = defenders[0].position
 	defenders[0]._physics_process(1.0/60)
-	check(defenders[0].state != Unit.State.ENGAGING, "defender does not pursue outside leash")
+	check(defenders[0].state == Unit.State.ENGAGING and defenders[0].position == firing_position, "defender fires outside its territory without pursuing")
 	enemy.die()
 	await frames()
 	defenders[0].position = home
