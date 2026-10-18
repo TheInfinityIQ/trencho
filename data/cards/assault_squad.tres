@@ -17,6 +17,6 @@ damage = 25.6
 melee_damage = 35.0
 melee_interval = 1.1
 move_speed = 420.0
-attack_interval = 0.32
+attack_interval = 0.25
 attack_range = 400.0
 multiplicative = {}

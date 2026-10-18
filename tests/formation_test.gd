@@ -38,6 +38,7 @@ func _run() -> void:
 	root.add_child(game)
 	current_scene = game
 	game.set_process(false)
+	game.set_physics_process(false)
 	game.hand.set_process(false)
 	await process_frame
 	var fm = game.formation_manager
@@ -126,7 +127,7 @@ func _run() -> void:
 	terrain.queue_free()
 	for frame in range(3):
 		await physics_frame
-	# Invalid draw/release remains exact and red; no side effects.
+	# Invalid drawing remains exact/red; release clears it without side effects.
 	hand.cancel_selection()
 	hand.cards.assign([rifle, mojo, march, officer, rifle])
 	hand.draw_pile.assign([rifle, rifle, rifle, rifle, rifle])
@@ -138,26 +139,21 @@ func _run() -> void:
 	hand._unhandled_input(mouse_button(start, true))
 	var motion := InputEventMouseMotion.new()
 	motion.position = finish
-	hand._unhandled_input(motion)
-	hand._unhandled_input(mouse_button(finish, false))
-	check(hand.has_footprint and not hand.drawing_footprint, "Invalid rectangle persists after release")
+	hand._input(motion)
+	check(hand.has_footprint and hand.drawing_footprint, "Invalid rectangle is visible during draw")
 	check(hand.footprint.position.distance_to(tiny.position) < 0.1 and hand.footprint.size.distance_to(tiny.size) < 0.1, "Dragged footprint remains exactly drawn")
-	check(not game.footprint_preview.is_valid and hand.cards.size() == 5 and fm.pending.is_empty() and player.current_command == 10, "Invalid footprint is red and atomic")
-	# Corner drag resizes, interior drag moves, and release is captured over HUD.
-	var corner_point: Vector2 = game.get_canvas_transform() * hand.footprint.end
-	check(hand._start_footprint(corner_point) and hand.footprint_mode == "resize", "Invalid rectangle has resize handles")
-	hand._drag_footprint(game.get_canvas_transform() * (tiny.end + Vector2(20, 20)))
-	check(hand.footprint.size.distance_to(Vector2(120, 120)) < 0.1, "Corner resizing remains exact")
-	hand.drawing_footprint = false
-	var interior_point: Vector2 = game.get_canvas_transform() * hand.footprint.get_center()
-	check(hand._start_footprint(interior_point) and hand.footprint_mode == "move", "Invalid rectangle can be moved")
-	hand._drag_footprint(interior_point + Vector2(20, 0))
-	check(hand.footprint.position.x > tiny.position.x, "Move gesture changes position")
+	check(not game.footprint_preview.is_valid and hand.cards.size() == 5 and fm.pending.is_empty() and player.current_command == 10, "Invalid footprint is red and atomic while drawing")
+	hand._input(mouse_button(finish, false))
+	check(not hand.has_footprint and not hand.drawing_footprint and game.footprint_preview.is_empty(), "Invalid rectangle clears on release")
+	# A new draw and release over the HUD must also end without lingering geometry.
+	hand._unhandled_input(mouse_button(start, true))
+	hand._input(motion)
 	var hud_release := mouse_button(Vector2(500, root.size.y - 100), false)
 	hand._input(hud_release)
-	check(not hand.drawing_footprint and hand.has_footprint and fm.pending.is_empty(), "Release over HUD ends invalid gesture without deployment")
+	check(not hand.drawing_footprint and not hand.has_footprint and game.footprint_preview.is_empty() and fm.pending.is_empty(), "Release over HUD clears rejected gesture without deployment")
+	check(hand.selected_indices.size() == 2 and player.current_command == 10 and hand.discard_pile.is_empty(), "Rejected redraw preserves package and Command")
 	game._input(right)
-	check(not hand.has_footprint and game.footprint_preview.is_empty() and hand.selected_indices.is_empty(), "Right-click clears rectangle and ghosts without spending")
+	check(not hand.has_footprint and game.footprint_preview.is_empty() and hand.selected_indices.is_empty(), "Right-click clears selection without spending")
 	# Confirmation spends once, consumes the package and reserves before entry.
 	hand._toggle_card(1)
 	hand._toggle_card(0)
@@ -167,6 +163,8 @@ func _run() -> void:
 	check(not hand._confirm_footprint(), "Insufficient Command cannot confirm")
 	check(hand.selected_indices.size() == 2 and hand.discard_pile.is_empty() and player.current_command == 5 and fm.pending.is_empty(), "Resource rejection preserves cards, selection and resource")
 	player.current_command = 6
+	hand.has_footprint = true
+	hand.footprint = wide
 	check(hand._confirm_footprint(), "Valid footprint accepted")
 	check(player.current_command == 0 and hand.cards.size() == 5 and hand.discard_pile.size() == 2, "Exact package cost and consumption")
 	check(fm.reservations.size() == 12 and fm.pending.size() == 12 and game.units.is_empty(), "Reserve all slots and queue instead of instant spawn")

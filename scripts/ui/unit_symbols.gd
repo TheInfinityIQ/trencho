@@ -27,3 +27,6 @@ static func state_icon(canvas: CanvasItem, center: Vector2, radius: float, state
 	else:
 		canvas.draw_line(center+Vector2(0,radius),center-Vector2(0,radius),white,width,true)
 		canvas.draw_polyline(PackedVector2Array([center+Vector2(-radius*0.6,-radius*0.2),center-Vector2(0,radius),center+Vector2(radius*0.6,-radius*0.2)]),white,width,true)
+
+static func shield_icon(canvas: CanvasItem, center: Vector2, radius: float, color: Color = Color.WHITE) -> void:
+	canvas.draw_polyline(PackedVector2Array([center + Vector2(-radius, -radius), center + Vector2(radius, -radius), center + Vector2(radius * 0.8, radius * 0.35), center + Vector2(0, radius), center + Vector2(-radius * 0.8, radius * 0.35), center + Vector2(-radius, -radius)]), color, maxf(1, radius * 0.18), true)

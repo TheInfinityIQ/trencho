@@ -25,6 +25,112 @@ func body(point: Vector2, team: int) -> Unit:
 	return unit
 func frames(count: int = 3) -> void:
 	for i in range(count): await physics_frame
+func reservation_occupancy_scenarios() -> void:
+	var fm = game.formation_manager
+	var manager = game.deployment_manager
+	var rifle: BattleCard = game.card_catalog.rifle_squad
+	for team in [1, 2]:
+		var rectangle := Rect2(1200, 600 if team == 1 else 5300, 940, 140)
+		# A reservation describes entry geometry, not a destination to revalidate.
+		game.economies[team].current_command = 10
+		var accepted: Dictionary = manager.request_formation(team, [rifle], rectangle)
+		check(accepted.is_valid, "accept order before its drawn space becomes occupied")
+		var occupied_slot: Vector2 = fm.pending[0].position
+		var later_occupant := body(Vector2(3500, 3500), 3 - team)
+		later_occupant.position = occupied_slot
+		fm.tick(0.2)
+		freeze()
+		var actual_spawned := 0
+		for unit in game.units:
+			if unit.reservation_id >= 0: actual_spawned += 1
+		check(actual_spawned == 6 and fm.pending.is_empty(), "later occupancy of drawn slots does not cancel purchased troops")
+		check(game.economies[team].current_command == 7, "drawn-slot occupancy does not charge again")
+		clear_units()
+		await frames()
+		for blocker_team in [team, 3 - team]:
+			# Physically occupying an entry point after acceptance should retain,
+			# retry and eventually spawn that exact queued soldier once clear.
+			game.economies[team].current_command = 10
+			accepted = manager.request_formation(team, [rifle], rectangle)
+			check(accepted.is_valid, "accept order before physical entry becomes occupied")
+			var delayed_id: int = fm.pending[0].id
+			var delayed_point: Vector2 = fm.pending[0].entry_position
+			later_occupant = body(Vector2(3500, 3500), blocker_team)
+			later_occupant.position = delayed_point
+			for step in range(180):
+				fm.tick(1.0 / 60)
+				freeze()
+			check(fm.pending.size() == 1 and fm.pending[0].id == delayed_id and fm.reservations.has(delayed_id), "blocked entry retains the paid soldier and reservation across retries")
+			check(game.units.size() == 6, "one blocked file does not hold up five clear files")
+			later_occupant.position += Vector2(2000, 0)
+			fm.tick(0.2)
+			freeze()
+			var identifiers: Dictionary = {}
+			for unit in game.units:
+				if unit.reservation_id >= 0: identifiers[unit.reservation_id] = true
+			check(fm.pending.is_empty() and identifiers.size() == 6 and identifiers.has(delayed_id), "entry clearing spawns every paid soldier exactly once")
+			check(game.economies[team].current_command == 7, "entry retries never spend extra Command")
+			for step in range(60): fm.tick(1.0 / 60)
+			check(game.units.size() == 7, "completed queue never duplicates soldiers")
+			clear_units()
+			await frames()
+		# Separate legal drawn rectangles can translate to the same entry files.
+		# Let real movement clear those files, rather than deleting blockers.
+		game.economies[team].current_command = 10
+		var first: Dictionary = manager.request_formation(team, [rifle], rectangle)
+		var shifted := Rect2(1200, 1100 if team == 1 else 4800, 940, 140)
+		var second: Dictionary = manager.request_formation(team, [rifle], shifted)
+		check(first.is_valid and second.is_valid and fm.pending.size() == 12, "two drawn formations can share translated entry geometry")
+		for step in range(360):
+			fm.tick(1.0 / 60)
+			freeze()
+			for unit in game.units.duplicate(): unit._physics_process(1.0 / 60)
+		var flow: Dictionary = fm.flow_counts(team)
+		check(fm.pending.is_empty() and flow.active == 12 and flow.incoming == 0, "shared entry files eventually deliver both complete formations")
+		check(fm.reservations.is_empty(), "all shared-entry reservations release after crossing")
+		check(game.economies[team].current_command == 4, "both complete formations cost exactly two orders")
+		clear_units()
+		await frames()
+		# Terrain introduced at an accepted entry is retained/retried too.
+		game.economies[team].current_command = 10
+		accepted = manager.request_formation(team, [rifle], rectangle)
+		check(accepted.is_valid, "accept order before terrain blocks entry")
+		var terrain_id: int = fm.pending[0].id
+		var terrain := StaticBody2D.new()
+		terrain.collision_layer = 1
+		terrain.collision_mask = 0
+		terrain.position = fm.pending[0].entry_position
+		var collision := CollisionShape2D.new()
+		var shape := CircleShape2D.new()
+		shape.radius = 1
+		collision.shape = shape
+		terrain.add_child(collision)
+		game.add_child(terrain)
+		await frames()
+		fm.tick(0.2)
+		freeze()
+		check(fm.pending.size() == 1 and fm.pending[0].id == terrain_id and game.units.size() == 5, "new terrain queues its file without losing the reservation or blocking clear files")
+		terrain.queue_free()
+		await frames()
+		fm.tick(0.2)
+		freeze()
+		check(fm.pending.is_empty() and game.units.size() == 6, "terrain removal releases the last paid soldier")
+		clear_units()
+		await frames()
+		# A deep Mojo wave must drain completely as front ranks clear the route.
+		game.economies[team].current_command = 10
+		var deep := Rect2(2600, 600 if team == 1 else 4800, 620, 940)
+		accepted = manager.request_formation(team, [game.card_catalog.conscript_wave, game.card_catalog.commander_mojo], deep)
+		check(accepted.is_valid and fm.pending.size() == 24, "queue a deep 24-soldier formation")
+		for step in range(720):
+			fm.tick(1.0 / 60)
+			freeze()
+			for unit in game.units.duplicate(): unit._physics_process(1.0 / 60)
+		flow = fm.flow_counts(team)
+		check(fm.pending.is_empty() and flow.active == 24 and flow.incoming == 0, "deep formation eventually delivers all 24 soldiers")
+		check(fm.reservations.is_empty() and game.economies[team].current_command == 5, "deep wave releases every reservation at its original cost")
+		clear_units()
+		await frames()
 func run() -> void:
 	game = load("res://main.tscn").instantiate()
 	game.tuning = game.tuning.duplicate()
@@ -32,6 +138,7 @@ func run() -> void:
 	root.add_child(game)
 	current_scene = game
 	game.set_process(false)
+	game.set_physics_process(false)
 	await process_frame
 	var fm = game.formation_manager
 	var manager = game.deployment_manager
@@ -88,6 +195,7 @@ func run() -> void:
 	check(not fm.evaluate(2,wide,6).is_valid,"physically occupied rectangle can still be denied")
 	clear_units()
 	await frames()
+	await reservation_occupancy_scenarios()
 	# Full 24-body order: two broad ranks, no distant-slot travel stage.
 	game.economies[2].current_command = 10
 	var mass := Rect2(1000,5000,1900,300)
@@ -141,6 +249,7 @@ func run() -> void:
 	await process_frame
 	var restarted = current_scene
 	restarted.set_process(false)
+	restarted.set_physics_process(false)
 	check(not restarted.player_deployment_confirmed and restarted.formation_manager.pending.is_empty(),"restart resets startup gate and queue")
 	print("REINFORCEMENT FLOW: %d assertions, %s" % [checks,"FAILED" if failed else "PASSED"])
 	quit(1 if failed else 0)

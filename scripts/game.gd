@@ -20,6 +20,9 @@ const ZONE = preload("res://scripts/systems/deployment_zone.gd")
 const DEPLOYMENT = preload("res://scripts/systems/deployment_manager.gd")
 const FORMATION = preload("res://scripts/systems/formation_manager.gd")
 const ENEMY = preload("res://scripts/systems/enemy_controller.gd")
+const SQUAD_COMMANDS = preload("res://scripts/systems/squad_commands.gd")
+const PLANNING = preload("res://scripts/systems/command_planning.gd")
+const COMMAND_UI = preload("res://scripts/ui/squad_command_ui.gd")
 @export var tuning: BattleTuning = preload("res://data/battle_tuning.tres")
 @export var card_definitions: Array[BattleCard] = [
 	preload("res://data/cards/rifle_squad.tres"), preload("res://data/cards/assault_squad.tres"),
@@ -32,6 +35,9 @@ var deployment_zones: Dictionary = {1: [], 2: []}
 var deployment_manager: RefCounted
 var enemy_controller: RefCounted
 var formation_manager: RefCounted
+var squad_commands: RefCounted
+var planning: Node
+var command_ui: Control
 var footprint_preview: Dictionary = {}
 var footprint_slots: Array = []
 var units: Array = []
@@ -85,6 +91,10 @@ func _ready() -> void:
 		deployment_zones[1].append(ZONE.new(1, lane, enemy_zones[lane]))
 	zones.append(Rect2(margin, field_size.y * 0.94, width * 3, field_size.y * 0.05))
 	formation_manager = FORMATION.new(self)
+	squad_commands = SQUAD_COMMANDS.new(self)
+	planning = PLANNING.new()
+	planning.battle = self
+	add_child(planning)
 	deployment_manager = DEPLOYMENT.new(self)
 	enemy_controller = ENEMY.new(self)
 	zone_overlay = Node2D.new()
@@ -99,6 +109,7 @@ func _ready() -> void:
 	ghost_material = ShaderMaterial.new()
 	ghost_material.shader = shader
 	var layer := CanvasLayer.new()
+	layer.layer = 2
 	add_child(layer)
 	hand = HAND.instantiate()
 	hand.game = self
@@ -107,17 +118,24 @@ func _ready() -> void:
 	hud.set_script(HUD)
 	hud.game = self
 	layer.add_child(hud)
+	command_ui = COMMAND_UI.new()
+	command_ui.game = self
+	layer.add_child(command_ui)
 	get_viewport().size_changed.connect(_fit_camera)
 	_fit_camera()
 	refresh_occupancy()
 
 func _process(delta: float) -> void:
 	_update_camera_input(delta)
+
+# Economy, reinforcement release and AI share the soldiers' fixed simulation clock.
+func _physics_process(delta: float) -> void:
 	if not battle_active:
 		return
 	for economy in economies.values():
 		economy.tick(delta)
 	formation_manager.tick(delta)
+	squad_commands.tick()
 	refresh_occupancy()
 	_check_deployment_lock(delta)
 	if battle_active and tuning.enemy_enabled:
@@ -170,6 +188,7 @@ func toggle_fullscreen() -> void:
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MAXIMIZED if fullscreen else DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 func _camera_point_allowed(point: Vector2) -> bool:
+	if is_instance_valid(command_ui) and (command_ui.blueprint.visible or command_ui.gesture_active): return false
 	if not battlefield_view_rect().has_point(point):
 		return false
 	if is_instance_valid(hud):
@@ -185,7 +204,7 @@ func _input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed and is_instance_valid(hand):
-			hand.cancel_selection()
+			command_ui.cancel_current()
 			get_viewport().set_input_as_handled()
 			return
 		if event.button_index == MOUSE_BUTTON_MIDDLE:
@@ -202,6 +221,7 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _update_camera_input(delta: float) -> void:
+	if is_instance_valid(command_ui) and (command_ui.blueprint.visible or command_ui.gesture_active): return
 	var direction := Vector2.ZERO
 	if Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP):
 		direction.y -= 1
@@ -283,7 +303,10 @@ func score_unit(unit: Unit) -> void:
 
 func unregister_unit(unit: Unit, killed: bool = true) -> void:
 	formation_manager.release_unit(unit)
+	formation_manager.untrack_unit(unit)
 	units.erase(unit)
+	squad_commands.member_removed(unit)
+	squad_commands.invalidate_enemy_cache()
 	if killed:
 		deaths_by_team[unit.team_id] += 1
 		unit_died.emit(unit)
@@ -293,6 +316,7 @@ func finish_battle(winning_team: int, reason: String) -> void:
 		return
 	battle_active = false
 	formation_manager.clear()
+	command_ui.close_all()
 	winner = winning_team
 	end_reason = reason
 	hand.cancel_selection()
@@ -343,6 +367,7 @@ func spawn_deployment(specification: Dictionary) -> void:
 	# Low-level fixture helper; gameplay orders use formation reservations/entry.
 	var team: Node = $TEAM_ONE if specification.team == 1 else $TEAM_TWO
 	var positions: Array = specification.spawn_positions
+	if not specification.has("squad"): squad_commands.create_squad(specification)
 	for zone in deployment_zones[specification.team]:
 		if specification.lane == 3 or specification.lane == zone.lane_id:
 			zone.spawn_points.clear()
@@ -351,9 +376,13 @@ func spawn_deployment(specification: Dictionary) -> void:
 		var soldier: Unit = UNIT.instantiate()
 		soldier.position = positions[index]
 		soldier.configure(self, specification, lane)
+		soldier.squad_member_index = index
+		soldier.squad.members.append(soldier)
 		team.add_child(soldier)
 		units.append(soldier)
+		formation_manager.track_unit(soldier)
 		deployment_zones[specification.team][lane].spawn_points.append(positions[index])
+		squad_commands.invalidate_enemy_cache()
 		unit_spawned.emit(soldier)
 	refresh_occupancy()
 
@@ -429,6 +458,8 @@ func spawn_reinforcement(slot: Dictionary, spawn_point: Vector2) -> Unit:
 	var soldier: Unit = UNIT.instantiate()
 	soldier.position = spawn_point
 	soldier.configure(self, slot.specification, lane_for_x(slot.position.x))
+	soldier.squad_member_index = slot.member_index
+	soldier.squad.members.append(soldier)
 	soldier.assigned_formation_slot = spawn_point
 	soldier.queue_wait = formation_manager.elapsed - slot.ordered_at
 	soldier.reservation_id = slot.id
@@ -437,6 +468,8 @@ func spawn_reinforcement(slot: Dictionary, spawn_point: Vector2) -> Unit:
 	var team: Node = $TEAM_ONE if slot.team == 1 else $TEAM_TWO
 	team.add_child(soldier)
 	units.append(soldier)
+	formation_manager.track_unit(soldier)
+	squad_commands.invalidate_enemy_cache()
 	unit_spawned.emit(soldier)
 	return soldier
 
@@ -448,7 +481,7 @@ func _draw_zones() -> void:
 		zone_overlay.draw_line(Vector2(0, capture_y), Vector2(field_size.x, capture_y), Color(1, 0.8, 0.25, 0.7), 2 * scale)
 		zone_overlay.draw_line(Vector2(0, edge), Vector2(field_size.x, edge), Color(1, 0.95, 0.7), 3 * scale)
 		zone_overlay.draw_string(ThemeDB.fallback_font, Vector2(30, capture_y - 12 * scale), "CAPTURE — keep moving to score", HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(14 * scale), Color(1, 0.85, 0.35))
-	for team in [1, 2]:
+	for team in ([1, 2] if is_instance_valid(hud) and hud.debug_panel.visible else []):
 		var region: Rect2 = formation_manager.regions[team]
 		var color := Color(0.2, 0.55, 1) if team == 2 else Color(1, 0.35, 0.25)
 		zone_overlay.draw_rect(region, Color(color, 0.12))
@@ -464,7 +497,7 @@ func _draw_zones() -> void:
 		var label := "Space %d / Needed %d  %s" % [footprint_preview.capacity, footprint_preview.required, "Ready" if footprint_preview.is_valid else deployment_message(footprint_preview.failure_reason)]
 		zone_overlay.draw_string(ThemeDB.fallback_font, rectangle.position - Vector2(0, 8) * scale, label, HORIZONTAL_ALIGNMENT_LEFT, -1, int(13 * scale), color)
 	for slot in formation_manager.reservations.values():
-		if slot.team == 2 and slot.state in ["QUEUED", "ENTERING"]:
+		if slot.team == 2 and slot.state in ["QUEUED", "ENTERING"] and not slot.specification.get("intent_order", false):
 			zone_overlay.draw_circle(slot.position, tuning.unit_radius, Color(0.5, 0.8, 1, 0.16))
 			zone_overlay.draw_arc(slot.position, tuning.unit_radius, 0, TAU, 20, Color(0.6, 0.85, 1, 0.5), scale)
 	if not is_instance_valid(hud) or not hud.debug_panel.visible:

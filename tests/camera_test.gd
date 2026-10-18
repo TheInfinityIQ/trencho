@@ -13,6 +13,7 @@ func _run() -> void:
 	root.add_child(game)
 	current_scene = game
 	game.set_process(false)
+	game.set_physics_process(false)
 	await process_frame
 	check(ProjectSettings.get_setting("display/window/size/mode") == 2, "Starts maximized")
 	check(game.zoom_multiplier == 2, "Closer default camera")

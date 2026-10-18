@@ -1,0 +1,42 @@
+name: Verify prototype
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download pinned Godot editor
+        run: |
+          $version = (Get-Content .godot-version -Raw).Trim()
+          $archive = "Godot_v${version}-stable_win64.exe.zip"
+          $release = "https://github.com/godotengine/godot-builds/releases/download/${version}-stable"
+          $engineDir = Join-Path $env:RUNNER_TEMP 'godot'
+          New-Item -ItemType Directory -Path $engineDir -Force | Out-Null
+          $zip = Join-Path $engineDir $archive
+          Invoke-WebRequest "$release/$archive" -OutFile $zip
+          $checksumFile = Join-Path $engineDir 'SHA512-SUMS.txt'
+          Invoke-WebRequest "$release/SHA512-SUMS.txt" -OutFile $checksumFile
+          $entry = Get-Content $checksumFile | Where-Object { ($_ -split '\s+')[-1].TrimStart('*') -eq $archive }
+          if (@($entry).Count -ne 1) { throw 'Missing or ambiguous release checksum.' }
+          $expected = ($entry -split '\s+')[0]
+          if ((Get-FileHash $zip -Algorithm SHA512).Hash -ine $expected) { throw 'Godot download checksum mismatch.' }
+          Expand-Archive -LiteralPath $zip -DestinationPath $engineDir
+          "GODOT_BIN=$(Join-Path $engineDir "Godot_v${version}-stable_win64.exe")" >> $env:GITHUB_ENV
+      - name: Import, test and smoke check
+        run: ./tools/verify.ps1 -FreshImport
+      - name: Upload verification logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-logs
+          path: .test-results/**/*.log
+          if-no-files-found: ignore

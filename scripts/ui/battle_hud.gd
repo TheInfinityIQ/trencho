@@ -172,6 +172,11 @@ Clock: queued | Arrow: entry/advance | Crosshair: combat")
 				inspected = unit
 	if inspected:
 		lines.append(inspected.debug_description())
+	lines.append("\nSQUAD COMMANDS" + "\nSelected: " + str(game.squad_commands.selected_ids))
+	lines.append("Planning %s | Speed %.2f | Blend %.2f" % [game.planning.active, Engine.time_scale, game.planning.blend])
+	lines.append("Gesture: " + str(game.command_ui.gesture_debug) + " | Failure: " + game.command_ui.failure_reason)
+	for squad in game.squad_commands.squads.values():
+		lines.append("Squad %d %s | %s | living %d | order %d | center %s r %.0f" % [squad.squad_id, squad.unit_type, squad.intent, squad.living_members().size(), squad.order_id, squad.defense_center, squad.defense_radius])
 	debug_panel.text = "\n".join(lines)
 
 func _on_battle_ended(winner: int, reason: String) -> void:

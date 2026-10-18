@@ -35,3 +35,15 @@ class_name BattleTuning
 @export_range(100, 1500) var capture_depth: float = 600.0
 @export_range(1, 1.5) var capture_speed_multiplier: float = 1.20
 @export_range(0.3, 0.6) var exit_fade_duration: float = 0.45
+
+@export_group("Squad orders")
+@export_range(160, 600) var defense_spacing: float = 320.0
+@export_range(70, 600) var minimum_defense_radius: float = 140.0
+@export_range(600, 3000) var maximum_defense_radius: float = 1800.0
+@export_range(100, 1800) var no_hold_depth: float = 900.0
+@export_group("Command planning")
+@export_range(0.1, 1) var planning_time_scale: float = 0.4
+@export_range(0.05, 1) var planning_transition_in_duration: float = 0.25
+@export_range(0.05, 1) var planning_transition_out_duration: float = 0.25
+@export_range(0, 1) var planning_desaturation_amount: float = 0.85
+@export_range(0.5, 1) var planning_brightness_adjustment: float = 0.88

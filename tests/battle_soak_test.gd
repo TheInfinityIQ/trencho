@@ -27,10 +27,11 @@ func _run() -> void:
 					continue
 				for lane in range(3):
 					var target_lane := (lane + int(frame / 60)) % 3
-					if game.deployment_manager.validate_deployment(2, [hand.cards[index]], target_lane).is_valid:
+					if game.deployment_manager.validate_squad(2, [hand.cards[index]], game.preset_footprint(2,target_lane), "ADVANCE").is_valid:
 						hand.cancel_selection()
 						hand._toggle_card(index)
-						hand._play_selected(target_lane)
+						var accepted_order: Dictionary = game.deployment_manager.request_squad(2,hand.selected_cards(),game.preset_footprint(2,target_lane),"ADVANCE")
+						if accepted_order.is_valid: hand._consume(hand.selected_indices)
 						deployed = true
 						break
 				if deployed:

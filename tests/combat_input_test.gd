@@ -23,6 +23,7 @@ func _run() -> void:
 	root.add_child(game)
 	current_scene = game
 	game.set_process(false)
+	game.set_physics_process(false)
 	await process_frame
 	var hand = game.hand
 	var rifle: Resource = game.card_catalog.rifle_squad
@@ -59,6 +60,41 @@ func _run() -> void:
 	game.formation_manager.clear()
 	for unit in game.units.duplicate():
 		unit.die()
+	# Rejected release must remove the box and ghosts, even when released over UI.
+	for release_over_hud in [false, true]:
+		hand.cards.assign([rifle, mojo, rifle, rifle, rifle])
+		hand.cancel_selection()
+		hand._toggle_card(0)
+		game.economies[2].current_command = 0 if release_over_hud else 10
+		var command_before: float = game.economies[2].current_command
+		var selected_before: Array = hand.selected_indices.duplicate()
+		var cards_before: Array = hand.cards.duplicate()
+		var invalid_rect := Rect2(2400, 5500, 100, 100)
+		press.position = game.get_canvas_transform() * invalid_rect.position
+		hand._unhandled_input(press)
+		motion.position = game.get_canvas_transform() * invalid_rect.end
+		hand._input(motion)
+		check(hand.drawing_footprint and not game.footprint_preview.is_valid, "Invalid box is red while drawing")
+		release.position = Vector2(500, root.size.y - 100) if release_over_hud else motion.position
+		hand._input(release)
+		check(not hand.has_footprint and not hand.drawing_footprint and game.footprint_preview.is_empty() and game.preview.get_child_count() == 0, "Invalid release clears rectangle and ghosts, including over HUD")
+		hand._process(0.2)
+		check(game.footprint_preview.is_empty(), "Periodic refresh cannot revive a rejected box")
+		check(hand.selected_indices == selected_before and hand.cards == cards_before and game.economies[2].current_command == command_before and game.formation_manager.pending.is_empty(), "Invalid release preserves cards, selection and Command without queueing")
+		check(hand.message.contains("No cards or Command spent"), "Rejection remains explained after box clears")
+	# The next draw can still confirm normally after an invalid release.
+	hand.cancel_selection()
+	hand.cards.assign([rifle, mojo, rifle, rifle, rifle])
+	hand._toggle_card(0)
+	game.economies[2].current_command = 3
+	press.position = game.get_canvas_transform() * rectangle.position
+	hand._unhandled_input(press)
+	motion.position = game.get_canvas_transform() * rectangle.end
+	hand._input(motion)
+	release.position = motion.position
+	hand._input(release)
+	check(game.formation_manager.pending.size() == 6 and hand.selected_indices.is_empty() and not hand.has_footprint, "Valid draw works immediately after rejected release")
+	game.formation_manager.clear()
 	# Drag remains available, including modifier-only discard and cancellation.
 	hand.cancel_selection()
 	hand.cards.assign([rifle, mojo, rifle, rifle, rifle])

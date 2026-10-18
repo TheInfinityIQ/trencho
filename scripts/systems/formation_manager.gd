@@ -9,6 +9,8 @@ var next_deployment_id := 1
 var elapsed := 0.0
 var spawn_clock := {1: 0.0, 2: 0.0}
 var terrain_shape := CircleShape2D.new()
+var body_cells: Dictionary = {}
+var unit_cells: Dictionary = {}
 
 func _init(owner_battle: Node) -> void:
 	battle = owner_battle
@@ -137,7 +139,7 @@ func reserve(specification: Dictionary) -> void:
 		next_id += 1
 		var slot := {"id": id, "team": specification.team, "position": point,
 			"entry_position": entries[index], "deployment_id": deployment_id,
-			"ordered_at": elapsed, "rectangle": specification.requested_rectangle,
+			"ordered_at": elapsed, "member_index": index, "rectangle": specification.requested_rectangle,
 			"state": "QUEUED", "unit": null, "specification": specification}
 		reservations[id] = slot
 		pending.append(slot)
@@ -207,13 +209,37 @@ func flow_counts(team: int) -> Dictionary:
 	counts["incoming"] = counts.queued + counts.entering
 	return counts
 
+func _body_cell_size() -> float:
+	return maxf(1, battle.tuning.unit_radius * 2 + 2)
+
+func track_unit(unit: Unit) -> void:
+	if not unit.is_alive():
+		untrack_unit(unit)
+		return
+	var cell := Vector2i((unit.global_position / _body_cell_size()).floor())
+	if unit_cells.has(unit) and unit_cells[unit] == cell: return
+	untrack_unit(unit)
+	if not body_cells.has(cell): body_cells[cell] = []
+	body_cells[cell].append(unit)
+	unit_cells[unit] = cell
+
+func untrack_unit(unit: Unit) -> void:
+	if not unit_cells.has(unit): return
+	var cell: Vector2i = unit_cells[unit]
+	body_cells[cell].erase(unit)
+	if body_cells[cell].is_empty(): body_cells.erase(cell)
+	unit_cells.erase(unit)
+
 func can_move_to(point: Vector2, ignored: Unit) -> bool:
 	var minimum: float = battle.tuning.unit_radius * 2 + 2
-	for unit in battle.units:
-		if unit != ignored and is_instance_valid(unit) and unit.is_alive() and unit.global_position.distance_squared_to(point) < minimum * minimum:
-			return false
+	var first := Vector2i(((point - Vector2.ONE * minimum) / _body_cell_size()).floor())
+	var last := Vector2i(((point + Vector2.ONE * minimum) / _body_cell_size()).floor())
+	for y in range(first.y,last.y+1):
+		for x in range(first.x,last.x+1):
+			for unit in body_cells.get(Vector2i(x,y),[]):
+				if unit != ignored and is_instance_valid(unit) and unit.is_alive() and unit.global_position.distance_squared_to(point) < minimum * minimum:
+					return false
 	return not terrain_blocks(point)
-
 func region_overrun(team: int) -> bool:
 	# Optional defeat now requires enemy exclusion across the entire region.
 	var enemies: Array = []

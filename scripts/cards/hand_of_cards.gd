@@ -23,7 +23,7 @@ var card_lifts: Dictionary = {}
 var selection_tween: Tween
 var rng := RandomNumberGenerator.new()
 var shuffle_count := 0
-var message := "Width sets frontage; depth sets ranks. Troops enter from your edge. Right-click clears."
+var message := "Select cards, click the battlefield for squad setup, then drag the order knob: line = Advance, loop = Defend."
 var preview_failure := ""
 var has_footprint := false
 var footprint := Rect2()
@@ -122,7 +122,7 @@ func _toggle_card(index: int) -> void:
 	else:
 		message = "TOO_MANY_MODIFIERS" if _modifier_count() >= game.tuning.maximum_modifiers else "INCOMPATIBLE_MODIFIER"
 		return
-	message = "Draw a rectangle in the blue area. Release green to deploy. Right-click clears."
+	message = "Click the battlefield to open the squad blueprint. Cards and Command commit only after a valid order."
 	if _unit_index() < 0 and not selected_indices.is_empty():
 		message = "Modifiers selected. Choose a Unit to complete the package. Right-click clears."
 	_animate_selection()
@@ -199,9 +199,13 @@ func _confirm_footprint() -> bool:
 		return false
 	var result: Dictionary = game.deployment_manager.request_formation(2, selected_cards(), footprint)
 	if not result.is_valid:
-		game.show_footprint(footprint, result)
+		# End the rejected gesture as well as its visuals so preview refreshes
+		# cannot recreate a box after the mouse has been released.
+		has_footprint = false
+		drawing_footprint = false
+		game.clear_footprint()
 		preview_failure = result.failure_reason
-		message = "Adjust the red rectangle or change cards. No cards or Command spent."
+		message = "%s. No cards or Command spent. Draw a new formation." % game.deployment_message(result.failure_reason)
 		return false
 	_consume(selected_indices)
 	message = "Reinforcements ordered: %d units, %.0f Command" % [result.resolved_deployment.quantity, result.total_cost]
@@ -324,7 +328,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				if _discard_rect().has_point(event.position):
 					_discard_selected()
 				else:
-					message = "Cards selected. Now drag a rectangle inside the blue deployment area."
+					message = "Cards selected. Click the battlefield to configure this squad."
 				dragged_index = -1
 			elif pressed_discard and _discard_rect().has_point(event.position):
 				_discard_selected()
@@ -353,7 +357,7 @@ func _notification(what: int) -> void:
 
 func package_description() -> String:
 	if selected_indices.is_empty():
-		return "Select a Unit and up to two Modifiers in either order; drag a formation in the blue area"
+		return "Select cards then click the battlefield for a squad blueprint; click soldiers to re-command squads"
 	var names: Array[String] = []
 	for card in selected_cards():
 		names.append(card.display_name)

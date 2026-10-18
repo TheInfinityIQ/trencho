@@ -17,6 +17,14 @@ func _draw() -> void:
 	draw_rect(bar.grow(4),Color(0.02,0.025,0.035))
 	bar.size.x *= clampf(unit.current_health / unit.total_health, 0, 1)
 	draw_rect(bar,Color(0.25,0.85,0.4) if unit.team_id == 2 else Color(1,0.25,0.2))
+	# Team silhouette stays readable even under planning desaturation.
+	if unit.team_id == 1:
+		draw_colored_polygon(PackedVector2Array([Vector2(-25,-105),Vector2(25,-105),Vector2(0,-140)]), Color.WHITE)
+	else:
+		draw_arc(Vector2(0,-120), 18, 0, TAU, 16, Color.WHITE, 5)
+	if unit.squad != null and unit.squad.intent == "DEFEND":
+		SYMBOLS.shield_icon(self, Vector2(110, 0), radius, Color.WHITE)
+		if not unit.defense_established: SYMBOLS.state_icon(self, Vector2(110,-radius*2.8), radius, 0)
 	var debug: bool = is_instance_valid(unit.battle) and is_instance_valid(unit.battle.hud) and unit.battle.hud.debug_panel.visible
 	if debug or unit.state in [Unit.State.CAPTURING, Unit.State.EXITING]:
 		var state_center := Vector2(105,90)

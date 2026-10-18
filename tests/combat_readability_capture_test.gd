@@ -29,8 +29,9 @@ func run() -> void:
 	root.add_child(game)
 	current_scene = game
 	game.set_process(false)
+	game.set_physics_process(false)
 	await process_frame
-	var expected := {"rifle_squad":[100,45,300,0.75,650,6,3],"assault_squad":[225,25.6,420,0.32,400,4,4],"conscript_wave":[75,27.5,250,1.1,585,12,2]}
+	var expected := {"rifle_squad":[100,45,300,0.75,650,6,3],"assault_squad":[225,25.6,420,0.25,400,4,4],"conscript_wave":[75,27.5,250,1.1,585,12,2]}
 	for kind in expected:
 		var card: BattleCard = game.card_catalog[kind]
 		var v: Array = expected[kind]

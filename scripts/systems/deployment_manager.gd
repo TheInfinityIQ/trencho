@@ -84,6 +84,7 @@ func request_formation(team: int, cards: Array, rectangle: Rect2) -> Dictionary:
 		return result
 	# Reserve and queue only after every spatial, package and economy check succeeds.
 	battle.economies[team].spend(result.total_cost)
+	battle.squad_commands.create_squad(result.resolved_deployment)
 	battle.formation_manager.reserve(result.resolved_deployment)
 	if team == 2:
 		battle.player_deployment_confirmed = true
@@ -101,3 +102,44 @@ func request_deployment(team: int, cards: Array, lane: int) -> Dictionary:
 	if team not in [1, 2] or lane < 0 or lane > 3:
 		return rejected("INVALID_ZONE")
 	return request_formation(team, cards, battle.preset_footprint(team, lane))
+
+# New player/bot order path: geometry sets entry shape, never battlefield legality.
+func validate_squad(team: int, cards: Array, rectangle: Rect2, kind: String, center: Vector2 = Vector2.ZERO, radius: float = 0) -> Dictionary:
+	var response := resolve_package(cards)
+	if not response.is_valid: return response
+	if team not in [1, 2]: return rejected("INVALID_ZONE", response.total_cost)
+	if not battle.battle_active: return rejected("BATTLE_ENDED", response.total_cost)
+	if kind not in ["ADVANCE", "DEFEND"]: return rejected("UNRECOGNIZED_GESTURE", response.total_cost)
+	if not rectangle.position.is_finite() or not rectangle.size.is_finite() or rectangle.size.x <= 0 or rectangle.size.y <= 0 or rectangle.position.x < 0 or rectangle.end.x > battle.field_size.x:
+		return rejected("INVALID_FORMATION", response.total_cost)
+	var candidates: Array = battle.formation_manager.generate_slots(rectangle, team)
+	if candidates.size() < response.resolved_deployment.quantity: return rejected("NOT_ENOUGH_SPACE", response.total_cost)
+	var plan: Dictionary = {}
+	if kind == "DEFEND":
+		plan = battle.squad_commands.defense_plan(team, response.resolved_deployment.quantity, center, radius)
+		if not plan.success: return rejected(plan.failure_reason, response.total_cost)
+	if not battle.economies[team].can_spend(response.total_cost): return rejected("INSUFFICIENT_COMMAND", response.total_cost)
+	response["defense_plan"] = plan
+	response.resolved_deployment["spawn_positions"] = battle.formation_manager.choose_slots(team, rectangle, response.resolved_deployment.quantity, candidates)
+	response.resolved_deployment["team"] = team
+	response.resolved_deployment["requested_rectangle"] = rectangle
+	response.resolved_deployment["lane"] = battle.lane_for_x(rectangle.get_center().x)
+	response.resolved_deployment["reinforcements"] = true
+	response.resolved_deployment["intent_order"] = true
+	return response
+
+func request_squad(team: int, cards: Array, rectangle: Rect2, kind: String, center: Vector2 = Vector2.ZERO, radius: float = 0) -> Dictionary:
+	battle.deployment_requested.emit(team, cards, rectangle)
+	var response := validate_squad(team, cards, rectangle, kind, center, radius)
+	if not response.is_valid:
+		battle.last_rejection = response.failure_reason
+		battle.deployment_rejected.emit(team, response.failure_reason)
+		return response
+	battle.economies[team].spend(response.total_cost)
+	var squad: BattleSquad = battle.squad_commands.create_squad(response.resolved_deployment)
+	battle.formation_manager.reserve(response.resolved_deployment)
+	response["command_result"] = battle.squad_commands.apply_validated([squad], kind, response.defense_plan)
+	if team == 2: battle.player_deployment_confirmed = true
+	battle.last_rejection = ""
+	battle.deployment_accepted.emit(team, response.resolved_deployment)
+	return response
