@@ -10,14 +10,14 @@ Current interaction contract: [Drawn Commands v0.2](DRAWN_COMMAND_V02_IMPLEMENTA
 - A valid initial command spends Command once, discards/refills the selected cards, creates a distinct squad with an intent, and queues off-screen reinforcements. Failed/cancelled setup or commands spend nothing.
 - New squads are not limited to the old deployment rectangles. Enemy proximity or occupancy in the blueprint's world projection does not veto deployment. Real bodies/terrain at an off-screen entrance can delay individual soldiers safely; queued soldiers retry rather than disappear.
 - **Advance** soldiers fight threats in range, then continue toward the enemy side. Survivors do not automatically re-form.
-- **Defend** soldiers move to allocated positions and fight immediate threats en route. Once established, they target enemies inside the defense circle, prefer already shootable targets, and can reposition within their leash. They return to their positions when threats disappear.
-- Defense circles expand to fit all commanded soldiers, up to the configured maximum. Packing leaves movement corridors so settled defenders do not cage later arrivals. Squads keep separate identities within a shared circle. Defensive reformation after casualties waits for pressure to end.
+- **Defend** establishes oriented squad formation blocks. Frontline soldiers retain normal targeting and territorial pursuit; reserve soldiers can fire from their homes but advance primarily through reserve waves. See [Defensive fronts](DEFENSIVE_FRONTS.md).
+- Formation files/ranks persist with traversable spacing. Targeted reinforcements fill suitable gaps, add reserve depth, or extend frontage without globally repacking. Casualties leave vacancies; reserve waves normally wait 3 seconds, reduced to at most 1 second under heavy loss. Eligible stragglers physically consolidate into compatible casualty slots.
 - Click any friendly soldier to select its whole squad. White rings mark selection. Click a selected squad to toggle it off; Shift+click adds/removes squads. Releasing Shift preserves selection. Selection alone never slows the game.
 - Drag the selected squads' single knob to re-command them without reopening the blueprint. Advance clears their defense order; Defend assigns a new shared area.
 - **Right-click / Escape** backs out one level: cancel an active gesture while preserving orders/selection; back out of blueprint/pending setup without spending; otherwise clear squad selection; otherwise clear card selection. Cancellation never silently changes tactical intent.
 - Planning begins during blueprint setup or knob dragging. Speed smoothly transitions toward 0.40x and the battlefield desaturates. Cards/command overlays remain colored. Success/cancellation restores speed/color; exit/restart resets time scale.
-- The enemy-side **No-Hold Zone** fades in during planning with hatching and a boundary. A Defend circle must lie entirely outside it and inside the battlefield. Advance, combat, capture and scoring remain permitted there.
-- Shield = Defend; arrow + shield = moving to Defend. Advance has no persistent intent icon. Defense circles flash on acceptance, fade afterward, and become clear when their squad is selected again. Failures float upward with a contextual icon/reason.
+- The enemy-side **No-Hold Zone** fades in during planning with hatching and a boundary. Every home in a defensive Formation Block must fit outside it and inside the battlefield. Advance, combat, capture and scoring remain permitted there.
+- Shield = Defend; arrow + shield = moving to Defend. Advance has no persistent intent icon. Segmented front edges show occupied frontage and casualty gaps; territory is secondary and reinforcement previews show proposed blocks. Failures float upward with a contextual icon/reason.
 - Partial casualties preserve an active command. Destroyed squads leave selection; losing all selected soldiers ends planning with SQUAD_DESTROYED.
 - Scroll or +/− zoom; middle-drag, WASD/arrows pan. Overview/Home shows the map; Deploy returns to your side; F11 toggles fullscreen. Camera motion is locked while drawing an order/editing the blueprint so gesture coordinates remain stable.
 - F3/Debug exposes squad IDs, intents, shared orders, selection, defense data, gesture metrics/failures, planning speed/blend and reinforcement counts. Pan behind the home edge to inspect Queued/Entering soldiers. Restart/Play again starts a fresh battle.
@@ -44,7 +44,8 @@ Advance soldiers commit to capture 600 pixels before the opposing score line, st
 ## Architecture and tuning
 
 - scripts/systems/squad.gd: persistent squad identity, members and intent.
-- scripts/systems/squad_commands.gd: selection, centroids, shared orders, defensive packing/validation and casualty reformation.
+- scripts/systems/squad_commands.gd: selection, centroids, shared orders, defensive commands, validation and point lifecycle.
+- scripts/systems/defensive_fronts.gd: persistent formation blocks, local reinforcement, reserve waves and physical straggler consolidation.
 - scripts/systems/gesture_recognizer.gd: bounded screen-space line/loop recognition.
 - scripts/systems/command_planning.gd: one shared real-time transition controller and world-only desaturation layer.
 - scripts/ui/squad_command_ui.gd: functional blueprint, knob/input lifecycle and contextual command feedback.

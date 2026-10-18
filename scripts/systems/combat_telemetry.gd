@@ -314,12 +314,12 @@ func removed(unit: Unit, killed: bool, departure_reason: String = "scored") -> v
 		fields.merge({"team":unit.team_id,"score_delta":unit.score_value})
 		event("SCORE_EVENT",fields)
 
-func squad_ended(id: int) -> void:
+func squad_ended(id: int, reason: String = "") -> void:
 	if not enabled or not squad_records.has(id): return
 	var record: Dictionary = squad_records[id]
 	if record.end_time != null: return
 	record.end_time = clock
-	record.end_reason = "destroyed" if record.deaths >= record.soldiers_deployed and record.soldiers_deployed > 0 else "departed"
+	record.end_reason = reason if not reason.is_empty() else ("destroyed" if record.deaths >= record.soldiers_deployed and record.soldiers_deployed > 0 else "departed")
 	close_path(id,record.end_reason)
 	event("SQUAD_DESTROYED" if record.end_reason == "destroyed" else "SQUAD_ENDED",{"squad_id":id})
 	if routs.has(id):

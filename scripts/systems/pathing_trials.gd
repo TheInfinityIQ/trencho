@@ -246,7 +246,7 @@ func _trial(case_name: String, seed_number: int) -> void:
 		"edge_route":
 			group = [spawn(12,4800,4600)]
 			expected = 12
-			if order(group,"DEFEND",point(5900,3200),PackedVector2Array([Vector2(game.field_size.x-1,point(0,4200).y),point(5900,3500)])): passed = await wait_for(group,expected,true,"bounded_edge_route")
+			if order(group,"DEFEND",point(5500,3200),PackedVector2Array([Vector2(game.field_size.x-1,point(0,4200).y),point(5500,3500)])): passed = await wait_for(group,expected,true,"bounded_edge_route")
 		"mass_route":
 			for index in range(6): group.append(spawn(12,2300,4400+index*160,12))
 			expected = 72

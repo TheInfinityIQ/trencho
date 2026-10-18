@@ -174,7 +174,7 @@ func run() -> void:
 	for center in [Vector2(110,1100),Vector2(game.field_size.x-110,3500),Vector2(3200,1050)]:
 		var squad: BattleSquad = bodies("rifle_squad",6,2,Vector2(3000,4500))
 		var response: Dictionary = commands.issue_group([squad],"DEFEND",center,9999)
-		check(response.success,"valid edge location clips instead of rejecting drawn radius")
+		check(not response.success and squad.order_id == -1,"formation crossing boundary rejects without silently reshaping")
 		if response.success:
 			settle(squad)
 			var point: Dictionary = commands.orders[squad.order_id]
@@ -184,7 +184,7 @@ func run() -> void:
 	var left: BattleSquad = bodies("rifle_squad",6,2,Vector2(2400,4000))
 	var right: BattleSquad = bodies("rifle_squad",6,2,Vector2(4000,4000))
 	commands.issue_group([left],"DEFEND",Vector2(2900,3500))
-	commands.issue_group([right],"DEFEND",Vector2(3600,3500))
+	commands.issue_group([right],"DEFEND",Vector2(4900,3500))
 	settle(left)
 	settle(right)
 	var owned: Dictionary = {}
@@ -201,11 +201,12 @@ func run() -> void:
 	commands.tick()
 	check(commands.orders[survivor].anchors.size()==2,"merged point retains spatially elongated anchor intent")
 	clear()
+	# Legacy pressure solver fixtures intentionally overlap point anchors.
 	# Pressure/capacity triggers absorption without an explicit merge command.
 	var strong: BattleSquad = bodies("rifle_squad",9,2,Vector2(3000,4400))
 	var weak: BattleSquad = bodies("rifle_squad",1,2,Vector2(3200,4400))
-	commands.issue_group([strong],"DEFEND",Vector2(3200,3500))
-	commands.issue_group([weak],"DEFEND",Vector2(3210,3500))
+	legacy_point(strong,Vector2(3200,3500))
+	legacy_point(weak,Vector2(3210,3500))
 	var weak_id: int = weak.order_id
 	for squad in [strong,weak]:
 		for unit in squad.members:
@@ -218,8 +219,8 @@ func run() -> void:
 	# Opposing pressure only breaks a point at an actual contested cell front.
 	strong = bodies("rifle_squad",9,2,Vector2(3000,4400))
 	weak = bodies("rifle_squad",1,1,Vector2(3200,4400))
-	commands.issue_group([strong],"DEFEND",Vector2(3200,3500))
-	commands.issue_group([weak],"DEFEND",Vector2(3210,3500))
+	legacy_point(strong,Vector2(3200,3500))
+	legacy_point(weak,Vector2(3210,3500))
 	for squad in [strong,weak]:
 		for unit in squad.members:
 			unit.position = squad.defense_positions[unit.squad_member_index]
@@ -296,3 +297,14 @@ func run() -> void:
 	clear()
 	print("DRAWN COMMAND V02: %d assertions, %s" % [checks,"FAILED" if failed else "PASSED"])
 	quit(1 if failed else 0)
+
+
+# Bypass new command geometry only to exercise the unchanged legacy pressure model.
+func legacy_point(squad: BattleSquad, center: Vector2) -> void:
+	var c = game.squad_commands
+	var id: int = c.next_order_id
+	c.next_order_id += 1
+	c.orders[id] = {"id":id,"team":squad.team,"center":center,"anchors":[center],"squads":[squad.squad_id],"cells":{},"preview_cells":{},"radius":0.0,"dirty":false,"enemies":[],"enemy_cache_valid":false,"established":0,"inbound":0,"lifecycle":"PENDING","desired_cells":0,"desired_area":0.0,"actual_area":0.0,"pressure":0.0,"capacity":0,"capacity_state":"STABLE","neighbors":[],"contributors":{}}
+	squad.order_id = id
+	squad.intent = "DEFEND"
+	c._repack(id)

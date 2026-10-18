@@ -55,6 +55,11 @@ class_name BattleTuning
 @export_range(70, 600) var minimum_defense_radius: float = 140.0
 @export_range(600, 3000) var maximum_defense_radius: float = 1800.0
 @export_range(100, 1800) var no_hold_depth: float = 900.0
+@export_group("Defensive fronts")
+@export var reserve_wave_delay: float = 3.0
+@export var reserve_heavy_loss_fraction: float = 0.25
+@export var reserve_heavy_loss_delay: float = 1.0
+@export var straggler_threshold: int = 3
 @export_group("Command planning")
 @export_range(0.1, 1) var planning_time_scale: float = 0.4
 @export_range(0.05, 1) var planning_transition_in_duration: float = 0.25

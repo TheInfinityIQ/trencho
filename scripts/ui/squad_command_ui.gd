@@ -30,6 +30,8 @@ var resize_sign := Vector2.ONE
 var live_recognition: Dictionary = {}
 var preview_target := -1
 var preview_projection: Dictionary = {}
+var front_preview: Dictionary = {}
+var front_preview_elapsed := 0.0
 var recognized_samples := -1
 var territory_geometry: Dictionary = {}
 var geometry_builds := 0
@@ -267,7 +269,7 @@ func _on_result(result: Dictionary) -> void:
 	if result.get("team", 2) != 2: return
 	failure_reason = result.failure_reason
 	feedback.append({"result": result, "origin": gesture_origin, "age": 0.0, "end": game.screen_to_battle(stroke[-1]) if not stroke.is_empty() else gesture_origin + Vector2(0, -350)})
-	if result.expanded: game.hand.message = "Defense area expanded to fit squad"
+	if result.expanded: game.hand.message = "Defensive front assigned"
 
 func cancel_current() -> void:
 	blueprint_resizing = false
@@ -372,7 +374,7 @@ func _process(_delta: float) -> void:
 		live_recognition = RECOGNIZER.classify(stroke)
 		preview_target = -1
 		preview_projection = {}
-		if live_recognition.success and not stroke.is_empty():
+		if live_recognition.success and live_recognition.command_type == "ADVANCE" and not stroke.is_empty():
 			preview_target = game.squad_commands.points.point_at(2,game.screen_to_battle(stroke[-1]))
 			if preview_target >= 0:
 				var extra := 0
@@ -388,6 +390,11 @@ func _process(_delta: float) -> void:
 			preview_projection = {}
 			recognized_samples = -1
 	frame_time = now
+	front_preview_elapsed += real_delta
+	if gesture_active and (front_preview.is_empty() or front_preview_elapsed >= 0.1):
+		front_preview = _front_preview_plan()
+		front_preview_elapsed = 0.0
+	elif not gesture_active: front_preview = {}
 	blueprint.position = (get_viewport_rect().size - blueprint.size) * 0.5
 	if had_command_selection and game.planning.active and game.squad_commands.selected_squads().is_empty():
 		gesture_active = false
@@ -433,7 +440,8 @@ func _draw() -> void:
 		for squad_id in point.squads:
 			if game.squad_commands.selected_ids.has(squad_id): selected = true
 		var color := Color(0.5,0.85,1,0.7 if selected else 0.20) if point.team == 2 else Color(1,0.45,0.35,0.4)
-		_draw_territory(point.cells,color,transform)
+		_draw_territory(point.cells,Color(color,color.a*0.35),transform)
+		_draw_front(point,transform,color)
 		var whole_point: bool = game.squad_commands.selected_point_id == id
 		if whole_point:
 			draw_circle(transform*point.center,21,Color(0.1,0.2,0.28,0.9))
@@ -443,7 +451,6 @@ func _draw() -> void:
 			draw_string(ThemeDB.fallback_font,transform*point.center+Vector2(12,4),"Inbound",HORIZONTAL_ALIGNMENT_LEFT,-1,12,color)
 	if gesture_active and preview_target >= 0 and game.squad_commands.orders.has(preview_target):
 		var point: Dictionary = game.squad_commands.orders[preview_target]
-		draw_circle(transform*point.center,point.radius*zoom+20,Color(0,0,0,0.18))
 		_draw_territory(point.cells,Color(0.6,0.9,1,0.8),transform)
 		_draw_territory(preview_projection.get("cells",{}),Color(0.6,0.9,1,0.25),transform)
 		var label := "Reinforce position"
@@ -451,6 +458,14 @@ func _draw() -> void:
 		draw_string(ThemeDB.fallback_font,transform*point.center+Vector2(15,-20),label,HORIZONTAL_ALIGNMENT_LEFT,-1,16,Color(1,0.85,0.5))
 	elif gesture_active and live_recognition.get("success",false) and live_recognition.command_type == "DEFEND":
 		SYMBOLS.shield_icon(self,live_recognition.center,15,Color(0.65,0.95,1,0.7))
+	if gesture_active and not front_preview.is_empty():
+		var front_plan: Dictionary = front_preview
+		for block in front_plan.get("proposed_blocks",[]):
+			var tint := Color(0.65,0.95,1,0.85) if front_preview.get("success",false) else Color(1,0.4,0.25,0.85)
+			for slot in block.slots:
+				draw_arc(transform*slot.home,maxf(3,game.tuning.unit_radius*zoom),0,TAU,12,tint,1.5,true)
+			if not block.slots.is_empty():
+				draw_string(ThemeDB.fallback_font,transform*block.slots[0].home+Vector2(8,-12),"Reserve depth" if block.role == "RESERVE" else "Frontage",HORIZONTAL_ALIGNMENT_LEFT,-1,13,tint)
 	if (pending_ready or not game.squad_commands.selected_ids.is_empty()) and not blueprint.visible:
 		var knob := knob_position()
 		draw_circle(knob, 18, Color(0.05, 0.12, 0.18))
@@ -535,3 +550,36 @@ func _draw_territory(cells: Dictionary, color: Color, transform: Transform2D) ->
 		var boundary := PackedVector2Array()
 		for point in geometry.boundary: boundary.append(transform*point)
 		draw_multiline(boundary,color,2,true)
+
+
+func _draw_front(point: Dictionary, transform: Transform2D, tint: Color) -> void:
+	var fronts = game.squad_commands.fronts
+	var half: float = fronts.spacing()*0.43
+	for block in fronts.blocks(point):
+		for slot in block.slots:
+			if slot.front:
+				var center: Vector2 = slot.home+point.facing*fronts.spacing()*0.4
+				var occupied: bool = fronts.occupied(slot)
+				var unit: Unit = fronts.occupant(slot)
+				var color := Color(tint,0.9 if unit != null and unit.defense_established and unit.position.distance_to(slot.home)<fronts.spacing()*0.4 else 0.35)
+				if occupied:
+					draw_line(transform*(center-point.lateral*half),transform*(center+point.lateral*half),color,3,true)
+				else:
+					draw_circle(transform*center,2,Color(1,0.55,0.3,0.5))
+			elif fronts.occupied(slot):
+				draw_circle(transform*slot.home,maxf(2,game.get_node("Camera2D").zoom.x*12),Color(tint,0.22))
+
+
+# Independent, read-only front prediction shared by the base UI and HUD extensions.
+func _front_preview_plan() -> Dictionary:
+	if not live_recognition.get("success",false): return {}
+	var kind: String = live_recognition.command_type
+	var route := PackedVector2Array()
+	for index in range(1,live_recognition.route.size()): route.append(game.screen_to_battle(live_recognition.route[index]))
+	var center: Vector2 = game.screen_to_battle(live_recognition.center)
+	if pending_ready:
+		var validation: Dictionary = game.deployment_manager.validate_squad(2,pending_cards,pending_rectangle,kind,center,0,route)
+		return validation.get("defense_plan",{})
+	var target: int = game.squad_commands.points.point_at(2,route[-1]) if kind == "ADVANCE" and not route.is_empty() else -1
+	if kind != "DEFEND" and target < 0: return {}
+	return game.squad_commands.fronts.plan(game.squad_commands.selected_squads(),center,route,target)

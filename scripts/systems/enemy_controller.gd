@@ -30,7 +30,7 @@ func tick(delta: float) -> void:
 	deployment_cooldown = maxf(0,deployment_cooldown-delta)
 	_assign_available()
 	if not battle.player_deployment_confirmed:
-		last_decision = "Waiting for player’s first deployment"
+		last_decision = "Waiting for playerÃ¢â‚¬â„¢s first deployment"
 		return
 	remaining -= delta
 	if remaining <= 0:
@@ -40,7 +40,7 @@ func tick(delta: float) -> void:
 func decide() -> void:
 	if deployment_cooldown > 0: return
 	if not battle.battle_active or not battle.player_deployment_confirmed:
-		last_decision = "Waiting for player’s first deployment"
+		last_decision = "Waiting for playerÃ¢â‚¬â„¢s first deployment"
 		return
 	_assign_available()
 	if not advance_only and (priority() == "WAIT" or not uncommitted.is_empty()):
@@ -77,10 +77,10 @@ func decide() -> void:
 	else:
 		last_decision = "Random legal lane (%.0f%% policy)" % ((1 - battle.tuning.enemy_weak_lane_weight) * 100)
 	var package: Array = planned_package.duplicate()
-	var rectangle: Rect2 = battle.preset_footprint(team,lane)
-	var resolved: Dictionary = battle.deployment_manager.resolve_package(package)
-	while battle.formation_manager.generate_slots(rectangle,team).size() < resolved.resolved_deployment.quantity:
-		rectangle.size.y += battle.tuning.spawn_spacing
+	var rectangle := _entry_blueprint(planned.resolved_deployment,lane)
+	if rectangle.size == Vector2.ZERO:
+		last_decision = "Wait: no legal formation at doctrine anchor"
+		return
 	var result: Dictionary = battle.deployment_manager.request_squad(team, package, rectangle, "ADVANCE")
 	if result.is_valid:
 		battle.telemetry.event("AI_DEPLOYMENT_DECISION",{"team":team,"available_command":battle.economies[team].current_command+result.total_cost,"cards_chosen":result.resolved_deployment.squad.source_cards.map(func(card): return card.card_id),"package_cost":result.total_cost,"reason":last_decision,"squad_id":result.resolved_deployment.squad.squad_id})
@@ -133,8 +133,10 @@ func _assign_available() -> void:
 			battle.telemetry.event("AI_ASSIGNMENT",{"team":team,"squad_id":id,"reason":"ADVANCE_EXCESS"})
 			continue
 		var target_id: int = doctrine_points.get(key,-1)
-		var response: Dictionary = battle.squad_commands.issue_group([squad],"DEFEND",anchor(key),0,PackedVector2Array(),target_id)
+		var destination: Vector2 = battle.squad_commands.fronts.ai_target(target_id) if battle.squad_commands.orders.has(target_id) else anchor(key)
+		var response: Dictionary = battle.squad_commands.issue_group([squad],"DEFEND",destination,0,PackedVector2Array(),target_id,Vector2.DOWN if team == 1 else Vector2.UP)
 		if response.success:
+			if target_id >= 0 and battle.squad_commands.orders.has(target_id): battle.squad_commands.orders[target_id].ai_edge_right = not battle.squad_commands.orders[target_id].get("ai_edge_right",false)
 			uncommitted.erase(id)
 			battle.telemetry.event("AI_ASSIGNMENT",{"team":team,"squad_id":id,"reason":("REINFORCE_" if target_id >= 0 else "ESTABLISH_")+key.to_upper(),"point_id":response.defensive_point_id})
 			doctrine_points[key] = response.defensive_point_id
@@ -162,3 +164,33 @@ func next_package() -> Array:
 	if not resolved.is_valid or resolved.total_cost > battle.economies[team].maximum_command:
 		return [battle.card_catalog.conscript_wave]
 	return cards
+
+
+# Favor two ranks, narrowing only when existing positions or boundaries prevent
+# that whole block from fitting at the unchanged doctrine anchor/sector.
+func _entry_blueprint(resolved: Dictionary, lane: int) -> Rect2:
+	var count: int = resolved.quantity
+	var step: float = maxf(battle.tuning.spawn_spacing,battle.tuning.unit_radius*2+4)
+	var columns := mini(ceili(count/2.0),maxi(1,floori(battle.field_size.x*0.25/battle.squad_commands.fronts.spacing())+2))
+	var key := "" if advance_only else priority()
+	var target_id: int = doctrine_points.get(key,-1)
+	var destination: Vector2 = battle.squad_commands.fronts.ai_target(target_id) if battle.squad_commands.orders.has(target_id) else (anchor(key) if not key.is_empty() and key != "WAIT" else Vector2.ZERO)
+	for files in range(columns,0,-1):
+		var rows := ceili(float(count)/files)
+		var width: float = (files-1)*step+battle.tuning.unit_radius*2
+		if width > battle.field_size.x: continue
+		var rectangle := Rect2(Vector2(clampf(battle.preset_footprint(team,lane).get_center().x-width*0.5,0,battle.field_size.x-width),0),Vector2(width,(rows-1)*step+battle.tuning.unit_radius*2))
+		if key.is_empty(): return rectangle
+		var spec := resolved.duplicate()
+		spec.team = team
+		spec.requested_rectangle = rectangle
+		spec.spawn_positions = battle.formation_manager.choose_slots(team,rectangle,count,battle.formation_manager.generate_slots(rectangle,team))
+		battle.deployment_manager.assign_components(spec)
+		var candidate := preload("res://scripts/systems/squad.gd").new()
+		candidate.team = team
+		candidate.squad_id = -1
+		candidate.unit_type = spec.unit_type
+		battle.squad_commands.fronts.remember(candidate,spec)
+		var plan: Dictionary = battle.squad_commands.fronts.plan([candidate],destination,PackedVector2Array(),target_id,Vector2.DOWN if team == 1 else Vector2.UP)
+		if plan.success: return rectangle
+	return Rect2()

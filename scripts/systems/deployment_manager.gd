@@ -148,20 +148,31 @@ func validate_squad(team: int, cards: Array, rectangle: Rect2, kind: String, cen
 		return rejected("INVALID_FORMATION", response.total_cost)
 	var candidates: Array = battle.formation_manager.generate_slots(rectangle, team)
 	if candidates.size() < response.resolved_deployment.quantity: return rejected("NOT_ENOUGH_SPACE", response.total_cost)
-	var plan: Dictionary = {}
-	if kind == "DEFEND":
-		plan = battle.squad_commands.points.plan(team, response.resolved_deployment.quantity, center)
-		if not plan.success: return rejected(plan.failure_reason, response.total_cost)
+
 	if not battle.economies[team].can_spend(response.total_cost): return rejected("INSUFFICIENT_COMMAND", response.total_cost)
 	for waypoint in route:
 		if not waypoint.is_finite() or not Rect2(Vector2.ZERO,battle.field_size).has_point(waypoint): return rejected("POSITION_UNREACHABLE",response.total_cost)
-	response["defense_plan"] = plan
 	response.resolved_deployment["spawn_positions"] = battle.formation_manager.choose_slots(team, rectangle, response.resolved_deployment.quantity, candidates)
 	response.resolved_deployment["team"] = team
 	response.resolved_deployment["requested_rectangle"] = rectangle
 	response.resolved_deployment["lane"] = battle.lane_for_x(rectangle.get_center().x)
 	response.resolved_deployment["reinforcements"] = true
 	response.resolved_deployment["intent_order"] = true
+	var target_id: int = battle.squad_commands.points.point_at(team,route[-1]) if kind == "ADVANCE" and not route.is_empty() else -1
+	var plan: Dictionary = {}
+	if kind == "DEFEND" or target_id >= 0:
+		var virtual_squad := preload("res://scripts/systems/squad.gd").new()
+		virtual_squad.team = team
+		virtual_squad.squad_id = -1
+		virtual_squad.unit_type = response.resolved_deployment.unit_type
+		assign_components(response.resolved_deployment)
+		battle.squad_commands.fronts.remember(virtual_squad,response.resolved_deployment)
+		plan = battle.squad_commands.fronts.plan([virtual_squad],center,route,target_id)
+		if not plan.success:
+			var failure := rejected(plan.failure_reason,response.total_cost)
+			failure["defense_plan"] = plan
+			return failure
+	response["defense_plan"] = plan
 	return response
 
 func request_squad(team: int, cards: Array, rectangle: Rect2, kind: String, center: Vector2 = Vector2.ZERO, radius: float = 0, route: PackedVector2Array = PackedVector2Array()) -> Dictionary:
@@ -175,6 +186,8 @@ func request_squad(team: int, cards: Array, rectangle: Rect2, kind: String, cent
 	var squad: BattleSquad = battle.squad_commands.create_squad(response.resolved_deployment)
 	battle.formation_manager.reserve(response.resolved_deployment)
 	var target_id: int = battle.squad_commands.points.point_at(team,route[-1]) if kind == "ADVANCE" and not route.is_empty() else -1
+	if kind == "DEFEND" or target_id >= 0:
+		response.defense_plan = battle.squad_commands.fronts.plan([squad],center,route,target_id)
 	response["command_result"] = battle.squad_commands.apply_validated([squad], "DEFEND" if target_id >= 0 else kind, response.defense_plan, route, target_id)
 	if team == 2: battle.player_deployment_confirmed = true
 	battle.last_rejection = ""

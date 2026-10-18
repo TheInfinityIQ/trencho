@@ -12,11 +12,13 @@ var orders: Dictionary = {}
 var next_squad_id := 1
 var next_order_id := 1
 var points: RefCounted
+var fronts: RefCounted
 var simulation_time := 0.0
 
 func _init(owner_battle: Node) -> void:
 	battle = owner_battle
 	points = preload("res://scripts/systems/defensive_points.gd").new(self)
+	fronts = preload("res://scripts/systems/defensive_fronts.gd").new(self)
 
 func create_squad(specification: Dictionary) -> BattleSquad:
 	var squad := SQUAD.new()
@@ -30,6 +32,8 @@ func create_squad(specification: Dictionary) -> BattleSquad:
 	squad.waypoint_clearance = maxf(45,(battle.tuning.unit_radius*2+2)*3)
 	squad.unit_type = specification.unit_type
 	squad.source_cards = specification.get("source_cards", []).duplicate()
+	if specification.has("components") and specification.has("spawn_positions"): battle.deployment_manager.assign_components(specification)
+	fronts.remember(squad,specification)
 	squads[squad.squad_id] = squad
 	specification["squad"] = squad
 	if battle.telemetry != null: battle.telemetry.squad_created(specification)
@@ -185,6 +189,9 @@ func defense_plan(team: int, count: int, center: Vector2, requested_radius: floa
 	return plan
 
 func apply_validated(group: Array, kind: String, plan: Dictionary = {}, route: PackedVector2Array = PackedVector2Array(), target_id: int = -1) -> Dictionary:
+	if kind == "DEFEND" and not plan.has("front_blocks"):
+		plan = fronts.plan(group,plan.get("defense_center",orders[target_id].center if orders.has(target_id) else Vector2.ZERO),route,target_id)
+		if not plan.success: return plan
 	if selected_point_id >= 0: selected_point_id = -1
 	var response := result(true,kind)
 	response.team = group[0].team
@@ -193,12 +200,8 @@ func apply_validated(group: Array, kind: String, plan: Dictionary = {}, route: P
 		if not orders.has(shared_id):
 			shared_id = next_order_id
 			next_order_id += 1
-			orders[shared_id] = {"squads":[],"team":group[0].team,"center":plan.defense_center,"anchors":[plan.defense_center],"radius":plan.defense_radius,"dirty":false,"enemies":[],"enemy_cache_valid":false,"cells":{},"preview_cells":plan.get("preview_cells",{}),"established":0,"inbound":0,"lifecycle":"PENDING","desired_cells":0,"desired_area":0.0,"actual_area":0.0,"pressure":0.0,"capacity":0,"capacity_state":"STABLE","neighbors":[],"contributors":{}}
-		else:
-			plan = points.plan(group[0].team,_point_count(shared_id)+_group_count(group,shared_id),orders[shared_id].center)
-			# Capacity is a warning, not a reinforcement veto.
-			if not plan.success:
-				plan = {"defense_center":orders[shared_id].center,"defense_radius":orders[shared_id].radius,"expanded":false,"positions":[]}
+			orders[shared_id] = {"id":shared_id,"squads":[],"team":group[0].team,"center":plan.defense_center,"anchors":[plan.defense_center],"radius":plan.defense_radius,"dirty":false,"enemies":[],"enemy_cache_valid":false,"cells":{},"preview_cells":plan.get("preview_cells",{}),"established":0,"inbound":0,"lifecycle":"PENDING","desired_cells":0,"desired_area":0.0,"actual_area":0.0,"pressure":0.0,"capacity":0,"capacity_state":"STABLE","neighbors":[],"contributors":{}}
+
 		response.defense_center = plan.defense_center
 		response.defense_radius = plan.defense_radius
 		response.expanded = plan.expanded
@@ -215,6 +218,7 @@ func apply_validated(group: Array, kind: String, plan: Dictionary = {}, route: P
 			battle.telemetry.event("DEFENSIVE_POINT_LEFT",{"point_id":squad.order_id,"squad_id":squad.squad_id})
 			orders[squad.order_id].pending_delete_reason = "REPLACED"
 			orders[squad.order_id].dirty = true
+			fronts.release(squad)
 			orders[squad.order_id].squads.erase(squad.squad_id)
 		squad.intent = kind
 		squad.order_id = shared_id
@@ -255,7 +259,8 @@ func apply_validated(group: Array, kind: String, plan: Dictionary = {}, route: P
 		for squad in group: battle.telemetry.order(squad,kind,squad.route_waypoints)
 	# Release vacated points before projecting homes for the replacement order.
 	prune()
-	if kind == "DEFEND": _repack(shared_id)
+	if kind == "DEFEND":
+		fronts.install(orders[shared_id],plan)
 	points.clock = 0
 	command_resolved.emit(response)
 	return response
@@ -275,6 +280,9 @@ func _group_count(group: Array, excluding: int = -1) -> int:
 func _repack(id: int) -> void:
 	if not orders.has(id): return
 	var order: Dictionary = orders[id]
+	if order.has("blocks"):
+		fronts.sync(order)
+		return
 	var count := _point_count(id)
 	var cells: Dictionary = points.isolated(order.team,order.anchors,count)
 	if count <= order.established and not order.cells.is_empty(): cells = order.cells.duplicate()
@@ -364,7 +372,7 @@ func issue_selected(kind: String, center: Vector2 = Vector2.ZERO, radius: float 
 	prune()
 	return issue_group(selected_squads(),kind,center,radius,route)
 
-func issue_group(group: Array, kind: String, center: Vector2 = Vector2.ZERO, _radius: float = 0, route: PackedVector2Array = PackedVector2Array(), target_id: int = -1) -> Dictionary:
+func issue_group(group: Array, kind: String, center: Vector2 = Vector2.ZERO, _radius: float = 0, route: PackedVector2Array = PackedVector2Array(), target_id: int = -1, facing: Vector2 = Vector2.ZERO) -> Dictionary:
 	var response := result(false,kind,"NO_SELECTED_UNITS")
 	response.team = group[0].team if not group.is_empty() else 2
 	if not battle.battle_active: response.failure_reason = "BATTLE_ENDED"
@@ -384,10 +392,12 @@ func issue_group(group: Array, kind: String, center: Vector2 = Vector2.ZERO, _ra
 			if orders[target_id].team != group[0].team:
 				response.failure_reason = "INVALID_DEFEND_LOCATION"
 			else:
-				return apply_validated(group,"DEFEND",{},route,target_id)
+				var reinforcement: Dictionary = fronts.plan(group,center,route,target_id,facing)
+				if reinforcement.success: return apply_validated(group,"DEFEND",reinforcement,route,target_id)
+				response.failure_reason = reinforcement.failure_reason
 		elif kind == "ADVANCE": return apply_validated(group,kind,{},route)
 		elif kind == "DEFEND":
-			var plan: Dictionary = points.plan(group[0].team,_group_count(group),center)
+			var plan: Dictionary = fronts.plan(group,center,route,-1,facing)
 			if plan.success: return apply_validated(group,kind,plan,route)
 			response = plan
 			response.team = group[0].team
@@ -411,6 +421,7 @@ func tick(delta: float = 1.0/60.0) -> void:
 				squad.combat_target = member.target
 				break
 		squad.breakthrough_remaining = maxf(0,squad.breakthrough_remaining-delta)
+	fronts.tick(delta)
 	points.update(delta)
 	for id in orders.keys():
 		var order: Dictionary = orders[id]

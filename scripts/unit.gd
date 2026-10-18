@@ -292,7 +292,7 @@ func _defend_tick(delta: float) -> void:
 	is_attacking = false
 	if not waypoint.is_finite() and not defense_established and global_position.distance_to(destination) <= 10:
 		defense_established = true
-	if defense_established:
+	if defense_established and squad.defense_roles.get(squad_member_index,"FRONT") == "FRONT" and not battle.squad_commands.fronts.in_transfer(self):
 		var contact: Unit = _cohesion_enemy()
 		if is_instance_valid(contact):
 			var firing_position: Vector2 = contact.position+contact.position.direction_to(position)*maxf(melee_range,attack_range*0.8)

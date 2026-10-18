@@ -177,7 +177,7 @@ func run() -> void:
 	distant_enemy.die()
 	defenders[1].die()
 	commands.tick()
-	check(defenders[0].state == Unit.State.RETURNING_TO_DEFENSE, "survivors re-form after pressure ends")
+	check(defenders[0].squad.defense_positions[defenders[0].squad_member_index] == home, "survivors keep assigned homes after casualties")
 	await frames()
 	var return_home: Vector2 = defenders[0].squad.defense_positions[defenders[0].squad_member_index]
 	defenders[0].position = return_home + Vector2(40,0)

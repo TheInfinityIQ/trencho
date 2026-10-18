@@ -54,7 +54,15 @@ func squad(count: int, center: Vector2, team: int) -> BattleSquad:
 	for index in range(count): spec.spawn_positions.append(center+Vector2(index%4,index/4)*180)
 	game.spawn_deployment(spec)
 	for unit in spec.squad.members: unit.set_physics_process(false)
-	game.squad_commands.issue_group([spec.squad],"DEFEND",center)
+	# This suite compares the unchanged radial candidate/heap algorithm only.
+	# New front geometry, legality, and pressure are exercised separately.
+	var commands = game.squad_commands
+	var id: int = commands.next_order_id
+	commands.next_order_id += 1
+	commands.orders[id] = {"id":id,"team":team,"center":center,"anchors":[center],"squads":[spec.squad.squad_id],"cells":{},"preview_cells":{},"radius":0.0,"dirty":false,"enemies":[],"enemy_cache_valid":false,"established":0,"inbound":0,"lifecycle":"PENDING","desired_cells":0,"desired_area":0.0,"actual_area":0.0,"pressure":0.0,"capacity":0,"capacity_state":"STABLE","neighbors":[],"contributors":{}}
+	spec.squad.order_id = id
+	spec.squad.intent = "DEFEND"
+	commands._repack(id)
 	for unit in spec.squad.members:
 		unit.position = spec.squad.defense_positions[unit.squad_member_index]
 		unit.defense_established = true
@@ -105,7 +113,14 @@ func run() -> void:
 	check(service.revision>revision and commands.orders[garrison.order_id].established==5,"casualty invalidates the solve even when square-footprint budget stays equal")
 	revision = service.revision
 	var inbound := squad(2,Vector2(4500,4500),2)
-	commands.issue_group([inbound],"DEFEND",Vector2(3200,3500),0,PackedVector2Array(),garrison.order_id)
+	# Add inbound metadata to the explicit legacy point without invoking the
+	# new front planner (which requires oriented formation geometry).
+	commands.orders[inbound.order_id].squads.erase(inbound.squad_id)
+	inbound.order_id = garrison.order_id
+	commands.orders[garrison.order_id].squads.append(inbound.squad_id)
+	for unit in inbound.members: unit.defense_established = false
+	commands.prune()
+	commands._repack(garrison.order_id)
 	service.update(1)
 	check(commands.orders[garrison.order_id].inbound==2,"inbound counts remain fresh even when active geometry is reused")
 	var before: int = service.candidate_builds

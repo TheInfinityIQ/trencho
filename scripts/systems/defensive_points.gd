@@ -54,8 +54,8 @@ func anchor_distance(point: Vector2, anchors: Array) -> float:
 		distance = minf(distance,point.distance_squared_to(Geometry2D.get_closest_point_to_segment(point,anchors[index-1],anchors[index])))
 	return distance
 
-func candidates(team: int, anchors: Array) -> Array:
-	var key: Array = [team,anchors.duplicate(),battle.field_size,cell_size(),battle.tuning.no_hold_depth]
+func candidates(team: int, anchors: Array, order: Dictionary = {}) -> Array:
+	var key: Array = [team,anchors.duplicate(),battle.field_size,cell_size(),battle.tuning.no_hold_depth,order.get("front_revision",0),order.get("id",-1)]
 	if candidate_cache.has(key): return candidate_cache[key]
 	if candidate_cache.size() >= 32: candidate_cache.clear()
 	candidate_builds += 1
@@ -64,7 +64,7 @@ func candidates(team: int, anchors: Array) -> Array:
 	for y in range(extent.y):
 		for x in range(extent.x):
 			var cell := Vector2i(x,y)
-			if legal(cell,team): result.append({"cell":cell,"distance":anchor_distance(position(cell),anchors)})
+			if legal(cell,team): result.append({"cell":cell,"distance":commands.fronts.distance_to_front(order,position(cell)) if order.has("blocks") else anchor_distance(position(cell),anchors)})
 	result.sort_custom(func(a,b): return a.distance < b.distance if not is_equal_approx(a.distance,b.distance) else (a.cell.y < b.cell.y if a.cell.y != b.cell.y else a.cell.x < b.cell.x))
 	candidate_cache[key] = result
 	return result
@@ -182,7 +182,7 @@ func update(delta: float, force: bool = false) -> void:
 		if established+inbound == 0:
 			erased.append(id)
 			continue
-		signature.append([id,order.team,order.anchors.duplicate(),established])
+		signature.append([id,order.team,order.anchors.duplicate(),established,order.get("front_revision",0)])
 	for id in erased:
 		battle.telemetry.point_deleted(id,"NO_DEFENDERS_OR_INBOUND")
 		commands.orders.erase(id)
@@ -204,7 +204,7 @@ func update(delta: float, force: bool = false) -> void:
 		order.cells = {}
 		order.neighbors = []
 		if order.established == 0: continue
-		var options := candidates(order.team,order.anchors)
+		var options := candidates(order.team,order.anchors,order)
 		if options.is_empty(): continue
 		var weight := pow(maxf(1,order.pressure),0.35)
 		streams[id] = {"options":options,"cursor":0,"weight":weight}
@@ -270,6 +270,14 @@ func absorb(weak_id: int, strong_id: int) -> void:
 		var squad: BattleSquad = commands.squads[squad_id]
 		squad.order_id = strong_id
 		strong.squads.append(squad_id)
+	if weak.has("blocks") and strong.has("blocks"):
+		for block in weak.blocks:
+			for slot in block.slots: slot.local = commands.fronts.local(strong,slot.home)
+			var rectangle := Rect2(block.slots[0].local,Vector2.ZERO)
+			for slot in block.slots: rectangle = rectangle.expand(slot.local)
+			block.rect = rectangle.grow(commands.fronts.spacing()*0.5)
+			strong.blocks.append(block)
+		strong.front_revision += 1
 	strong.dirty = true
 	commands.orders.erase(weak_id)
 	clock = 0
