@@ -24,6 +24,7 @@ var combat_candidates: Array = []
 var combat_target: Unit
 var corridor_offset := Vector2.ZERO
 var route_bounds := Rect2()
+var waypoint_clearance := 45.0
 
 func refresh_travel() -> void:
 	strategic_speed = INF
@@ -40,7 +41,15 @@ func refresh_travel() -> void:
 func route_target(unit) -> Vector2:
 	var index: int = route_indices.get(unit.squad_member_index,0)
 	var offset: Vector2 = route_offsets.get(unit.squad_member_index,Vector2.ZERO)
-	while index < route_waypoints.size() and unit.global_position.distance_to(_bounded_waypoint(route_waypoints[index]+offset)) < 45:
+	while index < route_waypoints.size():
+		var waypoint := _bounded_waypoint(route_waypoints[index]+offset)
+		var distance: float = unit.global_position.distance_to(waypoint)
+		if distance >= 45:
+			# Waypoints guide passage, not occupancy. A friendly standing on a
+			# bend must not demand that every follower enter its collision disc.
+			if distance >= waypoint_clearance: break
+			var formation = unit.battle.formation_manager
+			if formation.can_move_to(waypoint,unit) and formation.body_segment_clear(unit.position,waypoint,unit): break
 		index += 1
 	route_indices[unit.squad_member_index] = index
 	return _bounded_waypoint(route_waypoints[index]+offset) if index < route_waypoints.size() else Vector2.INF

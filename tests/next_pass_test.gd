@@ -148,11 +148,11 @@ func run() -> void:
 			if card.card_type == BattleCard.Type.UNIT: units.append(card.card_id)
 		kinds[str(units)] = true
 	check(kinds.size() == 6,"Shuffled templates cover single and mixed packages")
-	# Menu exposes exactly the two requested entry choices.
+	# Menu retains play/mirror entry points and exposes movement trials.
 	var menu = load("res://scenes/menu.tscn").instantiate()
 	root.add_child(menu)
 	var buttons: Array = menu.find_children("*","Button",true,false)
-	check(buttons.size() == 2 and buttons[0].text == "Play" and buttons[1].text == "Mirror test match","Menu has Play and Mirror test match")
+	check(buttons.size() == 3 and buttons[0].text == "Play" and buttons[1].text == "Mirror test match" and buttons[2].text == "Pathing trials","Menu has Play, Mirror test match and Pathing trials")
 	menu.free()
 	print("NEXT PASS: %d assertions, %s" % [checks,"FAILED" if failed else "PASSED"])
 	quit(1 if failed else 0)

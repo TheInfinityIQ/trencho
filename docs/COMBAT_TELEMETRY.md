@@ -73,8 +73,10 @@ Use the JSON's `measurement_notes` alongside this document when analyzing it.
   defense. This is a heuristic, not a claim that navigation failed. Arrival uses
   the game's route progress/defense-established state. An open-ended Advance has
   no waypoint arrival; it closes on departure, destruction, replacement or match
-  end. Superseded paths are retained. Local steering is not a pathfinder:
-  `repath_count` is zero, and order replacement creates a new order ID.
+  end. Superseded paths are retained. Ordinary travel uses local steering;
+  `repath_count` counts successfully installed per-soldier local recovery paths
+  while that order remains active. Cancelled/failed recovery jobs do not increment
+  it. Order replacement creates a new order ID. See [Pathing trials](PATHING_TRIALS.md).
 - Breakthrough reports actual healing, unused budget, capped duration and refresh
   identity. Current gameplay has a damage multiplier and **no fire-rate bonus**;
   telemetry accurately reports zero for the latter. Future abilities should pass

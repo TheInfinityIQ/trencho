@@ -2,8 +2,8 @@
 [CmdletBinding()]
 param(
     [string]$GodotPath = $env:GODOT_BIN,
-    [ValidateSet('ai_flow', 'mirror_mode', 'next_pass', 'defensive_combat', 'combat_telemetry', 'territory_performance', 'drawn_command_v02', 'retired_box', 'defense_regression', 'defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak')]
-    [string[]]$Suite = @('ai_flow', 'mirror_mode', 'next_pass', 'defensive_combat', 'combat_telemetry', 'territory_performance', 'drawn_command_v02', 'retired_box', 'defense_regression', 'defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak'),
+    [ValidateSet('ai_flow', 'mirror_mode', 'next_pass', 'defensive_combat', 'combat_telemetry', 'territory_performance', 'drawn_command_v02', 'retired_box', 'movement_recovery', 'pathing_trials', 'defense_regression', 'defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak')]
+    [string[]]$Suite = @('ai_flow', 'mirror_mode', 'next_pass', 'defensive_combat', 'combat_telemetry', 'territory_performance', 'drawn_command_v02', 'retired_box', 'movement_recovery', 'pathing_trials', 'defense_regression', 'defense_scale', 'blueprint_drag', 'squad_command', 'squad_movement', 'reinforcement_flow', 'formation', 'combat_input', 'combat_readability_capture', 'camera', 'simulation_clock', 'battle_soak'),
     [switch]$FreshImport,
     [ValidateRange(1, 600)][int]$TimeoutSeconds = 300
 )
@@ -94,6 +94,8 @@ try {
         territory_performance = 'TERRITORY PERFORMANCE: \d+ assertions, PASSED'
         drawn_command_v02 = 'DRAWN COMMAND V02: \d+ assertions, PASSED'
         retired_box = 'RETIRED BOX: \d+ assertions, PASSED'
+        movement_recovery = 'MOVEMENT RECOVERY: \d+ assertions, PASSED'
+        pathing_trials = 'PATHING TRIALS: \d+ trials, PASSED'
         defense_regression = 'DEFENSE REGRESSION: \d+ assertions, PASSED'
         defense_scale = 'DEFENSE SCALE: \d+ assertions, PASSED'
         blueprint_drag = 'BLUEPRINT DRAG: \d+ assertions, PASSED'
@@ -112,7 +114,9 @@ try {
         $frameRates = if ($suiteName -eq 'simulation_clock') { @(30, 144) } else { @(60) }
         foreach ($frameRate in $frameRates) {
             $name = if ($suiteName -eq 'simulation_clock') { "$suiteName-$frameRate" } else { $suiteName }
-            $output = Invoke-GodotCheck -Name $name -EngineArguments @('--headless', '--path', $testRoot, '--fixed-fps', "$frameRate", '--script', "tests/${suiteName}_test.gd", '--quit-after', '12000') -SuccessPattern $markers[$suiteName]
+            # Multi-trial movement checks span many battles, each with a bounded deadline.
+            $frameLimit = if ($suiteName -eq 'pathing_trials') { '240000' } else { '12000' }
+            $output = Invoke-GodotCheck -Name $name -EngineArguments @('--headless', '--path', $testRoot, '--fixed-fps', "$frameRate", '--script', "tests/${suiteName}_test.gd", '--quit-after', $frameLimit) -SuccessPattern $markers[$suiteName]
             Write-Host (($output -split '\r?\n' | Where-Object { $_ -match $markers[$suiteName] }) -join "`n")
             if ($suiteName -eq 'simulation_clock') {
                 $snapshot = [regex]::Match($output, '(?m)^CLOCK SNAPSHOT: (.+)\r?$')

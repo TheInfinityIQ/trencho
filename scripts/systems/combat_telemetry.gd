@@ -41,7 +41,7 @@ func _init(owner_battle: Node) -> void:
 			"No-target-in-range includes travel and idle defense; it does not prove an enemy exists out of range.",
 			"Stuck is a tunable centroid heuristic, excluding active combat, retreat and settled defense.",
 			"Mixed package unit costs follow their card; modifier cost is apportioned by resolved quantity.",
-			"AI draws no cards; its draw count is null. Repath count is zero: movement uses local steering, not a pathfinder."]}
+			"AI draws no cards; its draw count is null. Repath count records installed soldier recovery paths while an order is active."]}
 	for property in battle.tuning.get_property_list():
 		if property.usage & PROPERTY_USAGE_STORAGE and property.name not in ["script", "resource_path", "resource_name", "resource_local_to_scene"]:
 			data.stat_snapshot.tuning[property.name] = plain(battle.tuning.get(property.name))
@@ -440,6 +440,9 @@ func order(squad: BattleSquad, kind: String, route: PackedVector2Array) -> void:
 	active_paths[squad.squad_id] = record
 	event("ORDER_ISSUED",record)
 
+func recovery_path(unit: Unit) -> void:
+	if not enabled or closed or unit.squad == null: return
+	if active_paths.has(unit.squad.squad_id): active_paths[unit.squad.squad_id].repath_count += 1
 func close_path(id: int, reason: String) -> void:
 	if not active_paths.has(id): return
 	var record: Dictionary = active_paths[id]

@@ -284,6 +284,7 @@ func projection(id: int, extra: int) -> Dictionary:
 
 
 func invalidate_terrain() -> void:
+	battle.formation_manager.recovery.invalidate_terrain()
 	terrain.clear()
 	candidate_cache.clear()
 	last_signature.clear()

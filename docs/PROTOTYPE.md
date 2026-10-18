@@ -48,13 +48,13 @@ Advance soldiers commit to capture 600 pixels before the opposing score line, st
 - scripts/systems/gesture_recognizer.gd: bounded screen-space line/loop recognition.
 - scripts/systems/command_planning.gd: one shared real-time transition controller and world-only desaturation layer.
 - scripts/ui/squad_command_ui.gd: functional blueprint, knob/input lifecycle and contextual command feedback.
-- scripts/unit.gd: movement/combat states and bounded local steering and a shared nearby-body lookup; no grid pathfinder or NavigationAgent.
+- scripts/unit.gd: movement/combat states and bounded local steering, nearby-body lookup and rare budgeted recovery paths; no NavigationAgent.
 - BattleTuning / data/battle_tuning.tres: economy, spacing, defense radii/spacing, No-Hold depth, planning speed, transition durations, desaturation/brightness, capture and enemy settings.
 - data/cards/: card costs/stats/modifiers. No new dependency or persistent save-format migration is introduced.
 
 Physics runs at 60 ticks/second. Camera/UI use the render clock; planning transitions use unscaled elapsed time. The desaturation pass sits between the world and card/command layers.
 
-Old rectangle-validation helpers and legacy scenes remain for compatibility/regression coverage; they are not the live player command path. The optional old deployment-lock defeat toggle remains off by default. Full navigation around arbitrarily large mazes and final UI polish are outside this prototype; local steering tries a fixed set of headings before waiting.
+Old rectangle-validation helpers and legacy scenes remain for compatibility/regression coverage; they are not the live player command path. The optional old deployment-lock defeat toggle remains off by default. Full navigation around arbitrarily large mazes and final UI polish are outside this prototype; ordinary travel uses bounded headings; persistent stalls can request the incremental local recovery service described in [Pathing trials](PATHING_TRIALS.md).
 
 ## Verification and playtesting
 
@@ -68,7 +68,7 @@ Automated checks and scripted rendered captures are not a human playtest. Gestur
 
 ## Performance and direct box editing update
 
-Defenders use a fixed set of local steering probes rather than building pathfinding grids. Threat candidates are shared by each defense order; collision probes inspect nearby spatial buckets updated on spawn, position changes and removal. Slot assignment preserves horizontal ordering to reduce crossing.
+Defenders normally use a fixed set of local steering probes. A single shared recovery service incrementally builds bounded local grids for persistent stalls, capped at 128 cells per physics tick with a 2 ms scan target. Threat candidates are shared by each defense order; collision probes inspect nearby spatial buckets updated on spawn, position changes and removal. Slot assignment preserves horizontal ordering to reduce crossing.
 
 Blueprint geometry is edited exclusively through the box's corners/edges. Its preview scale and opposite anchor remain fixed during a gesture, so diagonal motion tracks the pointer. Width/depth limits clamp independently; releasing outside the panel still ends the captured resize. No sliders or scrollbars remain.
 

@@ -12,9 +12,11 @@ var spawn_clock := {1: 0.0, 2: 0.0}
 var terrain_shape := CircleShape2D.new()
 var body_cells: Dictionary = {}
 var unit_cells: Dictionary = {}
+var recovery: RefCounted
 
 func _init(owner_battle: Node) -> void:
 	battle = owner_battle
+	recovery = preload("res://scripts/systems/movement_recovery.gd").new(self)
 	var size: Vector2 = battle.field_size
 	regions[2] = Rect2(size.x * 0.05, size.y * 0.70, size.x * 0.90, size.y * 0.26)
 	regions[1] = Rect2(size.x * 0.05, size.y * 0.04, size.x * 0.90, size.y * 0.26)
@@ -154,12 +156,14 @@ func release_unit(unit: Unit) -> void:
 			reservations.erase(id)
 
 func clear() -> void:
+	recovery.clear()
 	pending.clear()
 	pending_counts.clear()
 	reservations.clear()
 
 func tick(delta: float) -> void:
 	elapsed += delta
+	recovery.tick()
 	for id in reservations.keys():
 		var unit = reservations[id].unit
 		if unit != null and (not is_instance_valid(unit) or not unit.is_alive() or unit.has_entered_battlefield):
@@ -265,6 +269,21 @@ func can_move_to(point: Vector2, ignored: Unit) -> bool:
 				if unit != ignored and is_instance_valid(unit) and unit.is_alive() and unit.global_position.distance_squared_to(point) < minimum * minimum:
 					return false
 	return not terrain_blocks(point)
+
+# Bounded body-only visibility for a nearby route guide. Terrain remains subject
+# to the normal physics query and every real movement step still checks bodies.
+func body_segment_clear(from: Vector2, to: Vector2, ignored: Unit, extra_clearance: float = 0) -> bool:
+	var minimum: float = battle.tuning.unit_radius*2+2+extra_clearance
+	var first := Vector2i(((from.min(to)-Vector2.ONE*minimum)/_body_cell_size()).floor())
+	var last := Vector2i(((from.max(to)+Vector2.ONE*minimum)/_body_cell_size()).floor())
+	for y in range(first.y,last.y+1):
+		for x in range(first.x,last.x+1):
+			for unit in body_cells.get(Vector2i(x,y),[]):
+				if unit == ignored or not is_instance_valid(unit) or not unit.is_alive(): continue
+				var closest := Geometry2D.get_closest_point_to_segment(unit.position,from,to)
+				if unit.position.distance_squared_to(closest) < minimum*minimum-0.01: return false
+	return true
+
 func region_overrun(team: int) -> bool:
 	# Optional defeat now requires enemy exclusion across the entire region.
 	var enemies: Array = []

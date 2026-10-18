@@ -24,6 +24,10 @@ func create_squad(specification: Dictionary) -> BattleSquad:
 	next_squad_id += 1
 	squad.team = specification.team
 	squad.route_bounds = Rect2(Vector2.ONE*battle.tuning.unit_radius,battle.field_size-Vector2.ONE*battle.tuning.unit_radius*2)
+	# A drawn waypoint can be occupied by a friendly body. Accept passage
+	# within body clearance rather than demanding an impossible exact hit.
+	# Include the steering probe plus clearance on both sides of a blocked guide.
+	squad.waypoint_clearance = maxf(45,(battle.tuning.unit_radius*2+2)*3)
 	squad.unit_type = specification.unit_type
 	squad.source_cards = specification.get("source_cards", []).duplicate()
 	squads[squad.squad_id] = squad
@@ -225,12 +229,16 @@ func apply_validated(group: Array, kind: String, plan: Dictionary = {}, route: P
 		squad.route_offsets.clear()
 		squad.refresh_travel()
 		var front := Vector2.ZERO
-		if not squad.living_members().is_empty():
-			front = squad.combat_center
-		for unit in squad.living_members():
-			# Preserve lateral/depth disorder rather than funneling all soldiers
-			# into a single waypoint and waiting to restore a pristine formation.
-			squad.route_offsets[unit.squad_member_index] = (unit.global_position-front).limit_length(battle.tuning.cohesion_leash*0.6)
+		var travelers: Array = []
+		for unit in squad.living_members(): travelers.append({"index":unit.squad_member_index,"position":unit.position})
+		for slot in battle.formation_manager.pending:
+			if slot.specification.get("squad") == squad: travelers.append({"index":slot.member_index,"position":slot.entry_position})
+		for member in travelers: front += member.position
+		if not travelers.is_empty(): front /= travelers.size()
+		for member in travelers:
+			# Queue members need offsets too; a newly purchased large squad must
+			# not funnel every soldier through the exact same drawn waypoint.
+			squad.route_offsets[member.index] = (member.position-front).limit_length(battle.tuning.cohesion_leash*0.6)
 		response.affected_squad_ids.append(squad.squad_id)
 		if kind == "DEFEND":
 			battle.telemetry.event("DEFENSIVE_POINT_JOINED",{"point_id":shared_id,"squad_id":squad.squad_id})
@@ -239,6 +247,7 @@ func apply_validated(group: Array, kind: String, plan: Dictionary = {}, route: P
 			orders[shared_id].squads.append(squad.squad_id)
 		else: squad.defense_radius = 0
 		for unit in squad.living_members():
+			unit.reset_steering()
 			unit.defense_established = false
 			unit.target = null
 			unit.state = Unit.State.MOVING_TO_DEFEND if kind == "DEFEND" else (Unit.State.ADVANCING if unit.has_entered_battlefield else Unit.State.ENTERING_BATTLEFIELD)
@@ -450,6 +459,7 @@ func break_point(id: int, combat: bool = true, break_cause: String = "SCRIPTED")
 		squad.retreating = combat and not squad.living_members().is_empty()
 		if squad.retreating: battle.telemetry.rout_started(squad,id)
 		for unit in squad.living_members():
+			unit.reset_steering()
 			unit.defense_established = false
 			unit.target = null
 			unit.state = Unit.State.RETREATING if squad.retreating else Unit.State.ADVANCING

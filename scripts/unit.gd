@@ -13,6 +13,20 @@ var squad: BattleSquad
 var squad_member_index := 0
 var defense_established := false
 var defense_avoid_side := 1.0
+var steering_goal := Vector2.INF
+var steering_progress_position := Vector2.INF
+var steering_wait := 0.0
+var steering_stalled := false
+var detour_remaining := 0.0
+var detour_heading := Vector2.ZERO
+var detour_locked := false
+var recovery_path := PackedVector2Array()
+var recovery_index := 0
+var recovery_generation := 0
+var recovery_wait := 0.0
+var recovery_best := INF
+var recovery_cooldown := 0.0
+var recovery_blocked := 0.0
 var unit_type := "rifle_squad"
 var direction_vector := Vector2.UP
 var init_direction_vector := Vector2.UP
@@ -139,8 +153,7 @@ func _simulate(delta: float) -> void:
 		target = null
 		is_attacking = false
 		rotation = PI if team_id == 1 else 0.0
-		velocity = init_direction_vector * move_speed * battle.tuning.capture_speed_multiplier
-		move_and_slide()
+		_move_defender(global_position+init_direction_vector*300,delta,move_speed*battle.tuning.capture_speed_multiplier)
 		if battle.crossed_score_line(self):
 			battle.score_unit(self)
 		return
@@ -307,19 +320,89 @@ func _defend_tick(delta: float) -> void:
 		var speed: float = move_speed if defense_established else (squad.strategic_speed if squad.strategic_speed > 0 else move_speed)
 		_move_defender(destination, delta, speed)
 
+func reset_steering() -> void:
+	recovery_generation += 1
+	recovery_path.clear()
+	recovery_index = 0
+	recovery_blocked = 0
+	recovery_wait = 0
+	recovery_best = INF
+	recovery_cooldown = 0
+	steering_goal = Vector2.INF
+	steering_progress_position = Vector2.INF
+	steering_wait = 0
+	steering_stalled = false
+	detour_remaining = 0
+	detour_heading = Vector2.ZERO
+	detour_locked = false
+
 func _move_defender(destination: Vector2, delta: float, speed: float = -1, respect_cohesion: bool = false) -> void:
 	var displacement := destination - global_position
 	var step := minf((move_speed if speed < 0 else speed) * delta, displacement.length())
 	var direction := displacement.normalized()
+	var clearance: float = battle.tuning.unit_radius*2+2
+	if destination.distance_to(steering_goal) > clearance:
+		recovery_generation += 1
+		recovery_path.clear()
+		recovery_best = displacement.length()
+		recovery_wait = 0
+		steering_progress_position = global_position
+		steering_wait = 0
+		steering_stalled = false
+		detour_remaining = 0
+		detour_locked = false
+	steering_goal = destination
+	recovery_wait += delta
+	recovery_cooldown = maxf(0,recovery_cooldown-delta)
+	if displacement.length() < recovery_best-4:
+		recovery_best = displacement.length()
+		recovery_wait = 0
+	if not respect_cohesion and recovery_path.is_empty() and recovery_wait >= 2 and steering_stalled and recovery_cooldown <= 0:
+		battle.formation_manager.recovery.request(self,destination)
+		recovery_cooldown = 1
+	if _follow_recovery(delta,speed,respect_cohesion): return
+	if (global_position-steering_progress_position).dot(direction) > clearance*0.25:
+		steering_progress_position = global_position
+		steering_wait = 0
+		steering_stalled = false
+	else: steering_wait += delta
+	if detour_remaining > 0:
+		detour_remaining = maxf(0,detour_remaining-delta)
+		if detour_remaining <= 0:
+			steering_progress_position = global_position
+			steering_wait = 0
+	elif steering_wait >= 0.75:
+		steering_stalled = true
+		steering_wait = 0
+		steering_progress_position = global_position
+		# Moving crowds retain normal steering. A stationary or mutually stalled body
+		# can justify a sidestep instead of re-aiming every frame.
+		if _choose_detour_side(direction,clearance):
+			detour_locked = true
+			detour_remaining = 1.5
+			detour_heading = direction.rotated(defense_avoid_side*PI*0.5)
+	if detour_locked:
+		# Resume as soon as the actual approach is clear. Staying on a timed
+		# sidestep after clearing a body can orbit a reachable home indefinitely.
+		var probe := global_position+direction*minf(displacement.length(),clearance*2)
+		if battle.formation_manager.body_segment_clear(global_position,probe,self) and not battle.formation_manager.terrain_blocks((global_position+probe)*0.5) and not battle.formation_manager.terrain_blocks(probe):
+			detour_remaining = 0
+			detour_locked = false
+			steering_progress_position = global_position
+			steering_wait = 0
+			steering_stalled = false
+	if detour_remaining > 0: direction = detour_heading
 	velocity = Vector2.ZERO
-	# Bounded local steering only: no grid, graph search or navigation agent.
-	# A persistent passing side avoids alternating left/right every frame.
+	# Ordinary movement uses bounded headings; persistent stalls can request
+	# the shared incremental recovery service. Passing side stays consistent.
 	var side := defense_avoid_side
 	var fallback := Vector2.ZERO
 	var lookahead := minf(displacement.length(), battle.tuning.unit_radius * 2 + step)
 	for angle in [0.0, side * 0.65, side * 1.2, side * 1.57, side * 2.1, -side * 0.65, -side * 1.2]:
 		var heading := direction.rotated(angle)
 		var proposed := global_position + heading * step
+		if proposed.x < battle.tuning.unit_radius or proposed.x > battle.field_size.x-battle.tuning.unit_radius: continue
+		if has_entered_battlefield and squad != null and squad.intent == "DEFEND" and (proposed.y < battle.tuning.unit_radius or proposed.y > battle.field_size.y-battle.tuning.unit_radius): continue
 		if respect_cohesion and squad != null and proposed.distance_to(squad.combat_center) > battle.tuning.cohesion_leash: continue
 		if defense_established and battle.squad_commands.inside_defense(squad,global_position) and not battle.squad_commands.inside_defense(squad,proposed): continue
 		if not battle.formation_manager.can_move_to(proposed, self): continue
@@ -328,12 +411,61 @@ func _move_defender(destination: Vector2, delta: float, speed: float = -1, respe
 		if defense_established and battle.squad_commands.inside_defense(squad,global_position) and not battle.squad_commands.inside_defense(squad,probe): continue
 		if battle.formation_manager.can_move_to(probe, self):
 			fallback = heading
-			if absf(angle) > 0.1: defense_avoid_side = signf(angle)
+			if not detour_locked and absf(angle) > 0.1: defense_avoid_side = signf(angle)
 			break
 	if fallback != Vector2.ZERO:
+		if detour_remaining > 0: detour_heading = fallback
 		velocity = fallback * (step / maxf(delta, 0.0001))
 		rotation = fallback.angle() + PI / 2
 		move_and_slide()
+func _follow_recovery(delta: float, speed: float, respect_cohesion: bool) -> bool:
+	if respect_cohesion:
+		recovery_path.clear()
+		return false
+	while recovery_index < recovery_path.size() and position.distance_to(recovery_path[recovery_index]) < 6: recovery_index += 1
+	if recovery_index >= recovery_path.size():
+		recovery_path.clear()
+		return false
+	var offset := recovery_path[recovery_index]-position
+	var heading := offset.normalized()
+	var step := minf((move_speed if speed < 0 else speed)*delta,offset.length())
+	var proposed := position+heading*step
+	var allowed: bool = battle.formation_manager.can_move_to(proposed,self)
+	if defense_established and battle.squad_commands.inside_defense(squad,position) and not battle.squad_commands.inside_defense(squad,proposed): allowed = false
+	if not allowed:
+		steering_stalled = true
+		velocity = Vector2.ZERO
+		recovery_blocked += delta
+		if recovery_blocked > 0.5:
+			recovery_path.clear()
+			return false
+		return true
+	recovery_blocked = 0
+	steering_stalled = false
+	velocity = heading*(step/maxf(delta,0.0001))
+	rotation = heading.angle()+PI/2
+	move_and_slide()
+	return true
+func _choose_detour_side(heading: Vector2, clearance: float) -> bool:
+	var nearest: Unit = null
+	var distance := INF
+	for body in battle.formation_manager.near_units(position,clearance*2):
+		if body == self: continue
+		var offset: Vector2 = body.position-position
+		if offset.dot(heading) <= 0 or absf(heading.cross(offset)) >= clearance: continue
+		# Stable right of way breaks a mutual wait. Freely moving neighbors
+		# never trigger recovery; a settled or lower-ID stalled body can.
+		var blocks: bool = body.state == State.DEFENDING or not body.is_physics_processing() or (body.steering_stalled and body.detour_remaining <= 0 and simulation_id > body.simulation_id)
+		if blocks and offset.length_squared() < distance:
+			distance = offset.length_squared()
+			nearest = body
+	if nearest != null:
+		# Pass away from the obstacle, rather than repeatedly turning into its
+		# occupied side when approaching a narrow gap between settled homes.
+		var cross := heading.cross(nearest.position-position)
+		if not detour_locked and absf(cross) > 0.01: defense_avoid_side = -signf(cross)
+		return true
+	return battle.formation_manager.terrain_blocks(position+heading*clearance)
 func debug_description() -> String:
 	var prefix := "No squad"
 	if squad != null:
