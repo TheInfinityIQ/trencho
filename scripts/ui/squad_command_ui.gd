@@ -31,6 +31,8 @@ var live_recognition: Dictionary = {}
 var preview_target := -1
 var preview_projection: Dictionary = {}
 var recognized_samples := -1
+var territory_geometry: Dictionary = {}
+var geometry_builds := 0
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -475,13 +477,49 @@ func _draw() -> void:
 
 
 
-func _draw_territory(cells: Dictionary, color: Color, transform: Transform2D) -> void:
-	var service = game.squad_commands.points
-	var size: float = service.cell_size()
+func _territory_geometry(cells: Dictionary, size: float) -> Dictionary:
+	var key := hash([cells,size])
+	if territory_geometry.has(key):
+		var cached: Dictionary = territory_geometry[key]
+		if cached.size == size and cached.source == cells: return cached
+	if territory_geometry.size() >= 32: territory_geometry.clear()
+	geometry_builds += 1
+	var by_row: Dictionary = {}
+	var boundary := PackedVector2Array()
 	for cell in cells:
-		var start: Vector2 = Vector2(cell)*size
-		var corners := PackedVector2Array([transform*start,transform*(start+Vector2(size,0)),transform*(start+Vector2(size,size)),transform*(start+Vector2(0,size))])
-		draw_colored_polygon(corners,Color(color,color.a*0.12))
+		if not by_row.has(cell.y): by_row[cell.y] = []
+		by_row[cell.y].append(cell.x)
+		var start := Vector2(cell)*size
+		var corners := [start,start+Vector2(size,0),start+Vector2(size,size),start+Vector2(0,size)]
 		var neighbors := [Vector2i.UP,Vector2i.RIGHT,Vector2i.DOWN,Vector2i.LEFT]
 		for index in range(4):
-			if not cells.has(cell+neighbors[index]): draw_line(corners[index],corners[(index+1)%4],color,2,true)
+			if not cells.has(cell+neighbors[index]):
+				boundary.append(corners[index])
+				boundary.append(corners[(index+1)%4])
+	var rows: Array[Rect2] = []
+	for y in by_row:
+		var columns: Array = by_row[y]
+		columns.sort()
+		var first: int = columns[0]
+		var last := first
+		for index in range(1,columns.size()):
+			if columns[index] == last+1:
+				last = columns[index]
+			else:
+				rows.append(Rect2(Vector2(first,y)*size,Vector2(last-first+1,1)*size))
+				first = columns[index]
+				last = first
+		rows.append(Rect2(Vector2(first,y)*size,Vector2(last-first+1,1)*size))
+	var geometry := {"source":cells.duplicate(),"size":size,"rows":rows,"boundary":boundary}
+	territory_geometry[key] = geometry
+	return geometry
+
+func _draw_territory(cells: Dictionary, color: Color, transform: Transform2D) -> void:
+	var geometry := _territory_geometry(cells,game.squad_commands.points.cell_size())
+	for row in geometry.rows:
+		var corners := PackedVector2Array([transform*row.position,transform*(row.position+Vector2(row.size.x,0)),transform*row.end,transform*(row.position+Vector2(0,row.size.y))])
+		draw_colored_polygon(corners,Color(color,color.a*0.12))
+	if not geometry.boundary.is_empty():
+		var boundary := PackedVector2Array()
+		for point in geometry.boundary: boundary.append(transform*point)
+		draw_multiline(boundary,color,2,true)

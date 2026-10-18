@@ -10,6 +10,12 @@ var owners: Dictionary = {}
 var clock := 0.0
 var terrain: Dictionary = {}
 var revision := 0
+var candidate_cache: Dictionary = {}
+var last_signature: Array = []
+var candidate_builds := 0
+var allocation_visits := 0
+var solve_count := 0
+var unchanged_skips := 0
 
 func _init(service: RefCounted) -> void:
 	command_ref = weakref(service)
@@ -49,6 +55,10 @@ func anchor_distance(point: Vector2, anchors: Array) -> float:
 	return distance
 
 func candidates(team: int, anchors: Array) -> Array:
+	var key: Array = [team,anchors.duplicate(),battle.field_size,cell_size(),battle.tuning.no_hold_depth]
+	if candidate_cache.has(key): return candidate_cache[key]
+	if candidate_cache.size() >= 32: candidate_cache.clear()
+	candidate_builds += 1
 	var result: Array = []
 	var extent := Vector2i((battle.field_size/cell_size()).ceil())
 	for y in range(extent.y):
@@ -56,6 +66,34 @@ func candidates(team: int, anchors: Array) -> Array:
 			var cell := Vector2i(x,y)
 			if legal(cell,team): result.append({"cell":cell,"distance":anchor_distance(position(cell),anchors)})
 	result.sort_custom(func(a,b): return a.distance < b.distance if not is_equal_approx(a.distance,b.distance) else (a.cell.y < b.cell.y if a.cell.y != b.cell.y else a.cell.x < b.cell.x))
+	candidate_cache[key] = result
+	return result
+
+func _before(a: Dictionary, b: Dictionary) -> bool:
+	return a.score < b.score if not is_equal_approx(a.score,b.score) else (a.id < b.id if a.id != b.id else (a.cell.y < b.cell.y if a.cell.y != b.cell.y else a.cell.x < b.cell.x))
+
+func _push(heap: Array, item: Dictionary) -> void:
+	heap.append(item)
+	var index := heap.size()-1
+	while index > 0:
+		var parent := (index-1)/2
+		if not _before(item,heap[parent]): break
+		heap[index] = heap[parent]
+		index = parent
+	heap[index] = item
+
+func _pop(heap: Array) -> Dictionary:
+	var result: Dictionary = heap[0]
+	var tail: Dictionary = heap.pop_back()
+	if heap.is_empty(): return result
+	var index := 0
+	while index*2+1 < heap.size():
+		var child := index*2+1
+		if child+1 < heap.size() and _before(heap[child+1],heap[child]): child += 1
+		if not _before(heap[child],tail): break
+		heap[index] = heap[child]
+		index = child
+	heap[index] = tail
 	return result
 
 func isolated(team: int, anchors: Array, count: int) -> Dictionary:
@@ -119,11 +157,10 @@ func update(delta: float, force: bool = false) -> void:
 	clock -= delta
 	if clock > 0 and not force: return
 	clock = maxf(0.05,battle.tuning.territory_update_interval)
-	owners.clear()
-	revision += 1
 	var allocation: Array = []
 	var erased: Array = []
 	var previous: Dictionary = {}
+	var signature: Array = [battle.field_size,cell_size(),battle.tuning.unit_radius,battle.tuning.no_hold_depth,battle.tuning.defense_spacing,battle.tuning.defense_area_margin]
 	for id in commands.orders:
 		var order: Dictionary = commands.orders[id]
 		var established := 0
@@ -142,21 +179,47 @@ func update(delta: float, force: bool = false) -> void:
 		order.desired_area = order.desired_cells*cell_size()*cell_size()
 		order.pressure = float(established)
 		previous[id] = order.cells
-		order.cells = {}
-		order.neighbors = []
 		if established+inbound == 0:
 			erased.append(id)
 			continue
-		if established == 0: continue
-		# Weighted distance creates a comparatively straight shared front. Each
-		# point has a finite budget; rejected cells spill into other legal space.
-		for candidate in candidates(order.team,order.anchors):
-			allocation.append({"id":id,"cell":candidate.cell,"score":candidate.distance/pow(maxf(1,order.pressure),0.35)})
+		signature.append([id,order.team,order.anchors.duplicate(),established])
 	for id in erased: commands.orders.erase(id)
-	allocation.sort_custom(func(a,b): return a.score < b.score if not is_equal_approx(a.score,b.score) else (a.id < b.id if a.id != b.id else (a.cell.y < b.cell.y if a.cell.y != b.cell.y else a.cell.x < b.cell.x)))
-	for candidate in allocation:
+	if not force and signature == last_signature:
+		# Repacking can temporarily mark a projected reinforcement as Critical.
+		# Refresh derived active capacity even when ownership itself is cached.
+		for order in commands.orders.values():
+			order.capacity_state = "CRITICAL" if order.capacity < order.established else ("COMPRESSED" if order.cells.size() < order.desired_cells else "STABLE")
+			order.radius = maxf(order.radius,bounds_radius(order.cells,order.center))
+		unchanged_skips += 1
+		return
+	last_signature = signature.duplicate(true)
+	owners.clear()
+	revision += 1
+	solve_count += 1
+	var streams: Dictionary = {}
+	for id in commands.orders:
+		var order: Dictionary = commands.orders[id]
+		order.cells = {}
+		order.neighbors = []
+		if order.established == 0: continue
+		var options := candidates(order.team,order.anchors)
+		if options.is_empty(): continue
+		var weight := pow(maxf(1,order.pressure),0.35)
+		streams[id] = {"options":options,"cursor":0,"weight":weight}
+		_push(allocation,{"id":id,"cell":options[0].cell,"score":options[0].distance/weight})
+	# Merge the per-point sorted streams. Quota-complete streams stop producing
+	# candidates; no full-map cross-product or global comparator sort is needed.
+	while not allocation.is_empty():
+		var candidate := _pop(allocation)
+		allocation_visits += 1
 		var order: Dictionary = commands.orders[candidate.id]
-		if order.cells.size() >= order.desired_cells or owners.has(candidate.cell): continue
+		if order.cells.size() >= order.desired_cells: continue
+		var stream: Dictionary = streams[candidate.id]
+		stream.cursor += 1
+		if stream.cursor < stream.options.size():
+			var next: Dictionary = stream.options[stream.cursor]
+			_push(allocation,{"id":candidate.id,"cell":next.cell,"score":next.distance/stream.weight})
+		if owners.has(candidate.cell): continue
 		# Only grow from anchors or adjacent owned cells; no remote islands.
 		var connected := false
 		for anchor in order.anchors:
@@ -219,4 +282,6 @@ func projection(id: int, extra: int) -> Dictionary:
 
 func invalidate_terrain() -> void:
 	terrain.clear()
+	candidate_cache.clear()
+	last_signature.clear()
 	clock = 0

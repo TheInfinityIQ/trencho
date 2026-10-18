@@ -1,10 +1,19 @@
 extends Node2D
 const SYMBOLS = preload("res://scripts/ui/unit_symbols.gd")
 var unit: Unit
+var visual_state: Array = []
+var redraw_requests := 0
 
 func _process(_delta: float) -> void:
 	global_rotation = 0
-	queue_redraw()
+	var camera := get_viewport().get_camera_2d()
+	var debug: bool = is_instance_valid(unit.battle) and is_instance_valid(unit.battle.hud) and unit.battle.hud.debug_panel.visible
+	var squad := unit.squad
+	var next: Array = [camera.zoom.x if camera else 1.0,unit.current_health,unit.total_health,unit.team_id,unit.unit_type,unit.state,unit.defense_established,debug,squad.intent if squad else "",squad.retreating if squad else false,squad.breakthrough_remaining > 0 if squad else false]
+	if next != visual_state:
+		visual_state = next
+		redraw_requests += 1
+		queue_redraw()
 
 func _draw() -> void:
 	var camera := get_viewport().get_camera_2d()

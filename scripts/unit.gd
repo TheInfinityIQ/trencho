@@ -37,6 +37,8 @@ var entry_elapsed := -1.0
 var base_attack_interval: float
 var base_move_speed: float
 const READOUT = preload("res://scripts/ui/unit_readout.gd")
+const TEAM_SHADER = preload("res://scripts/ui/unit_team.gdshader")
+static var team_materials: Dictionary = {}
 var SMOKE_PUFF = preload("res://scripts/fx/fx_smoke.gd")
 @onready var team_node: Node = get_parent()
 @onready var health_node: ColorRect = $CurrentHealth
@@ -83,12 +85,12 @@ func _ready() -> void:
 		var shape: CollisionShape2D = area.get_node("CollisionShape2D")
 		shape.shape = shape.shape.duplicate()
 		shape.shape.radius = melee_range if area_name == "MeleeArea2D" else attack_range
-	var material := ShaderMaterial.new()
-	var shader := Shader.new()
-	shader.code = "shader_type canvas_item; uniform vec4 team_color : source_color; void fragment(){ vec4 tex = texture(TEXTURE, UV); float shade = max(max(tex.r,tex.g),tex.b); COLOR = vec4(team_color.rgb * (0.55 + 0.45 * shade), tex.a); }"
-	material.shader = shader
-	material.set_shader_parameter("team_color", Color(1, 0.16, 0.12) if team_id == 1 else Color(0.12, 0.48, 1))
-	$SpriteBody.material = material
+	if not team_materials.has(team_id):
+		var material := ShaderMaterial.new()
+		material.shader = TEAM_SHADER
+		material.set_shader_parameter("team_color", Color(1, 0.16, 0.12) if team_id == 1 else Color(0.12, 0.48, 1))
+		team_materials[team_id] = material
+	$SpriteBody.material = team_materials[team_id]
 	$HealthBar.hide()
 	$CurrentHealth.hide()
 	var readout := READOUT.new()
