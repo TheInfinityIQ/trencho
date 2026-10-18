@@ -35,11 +35,11 @@ func build_ui() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 	var column := VBoxContainer.new()
-	column.custom_minimum_size = Vector2(620,0)
+	column.custom_minimum_size = Vector2(900,0)
 	column.add_theme_constant_override("separation",18)
 	center.add_child(column)
 	status = Label.new()
-	status.add_theme_font_size_override("font_size",22)
+	status.add_theme_font_size_override("font_size",18)
 	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(status)
 	var folder := Button.new()
@@ -97,7 +97,16 @@ func update_label() -> void:
 	status.text = "Mirror test matches\n\n"
 	for job in jobs:
 		var latest := IO.read_json(job.path)
-		status.text += "%s vs %s: %.1f game minutes | %d soldiers\n" % [job.pair[0].replace("LINE","WALL"),job.pair[1].replace("LINE","WALL"),float(latest.get("simulation_seconds",0))/60.0,latest.get("living_soldiers",0)]
+		status.text += "%s vs %s: %.1f game minutes | %d alive (both sides)\n" % [job.pair[0].replace("LINE","WALL"),job.pair[1].replace("LINE","WALL"),float(latest.get("simulation_seconds",0))/60.0,latest.get("living_soldiers",0)]
+		var side_number := 0
+		for side in latest.get("sides",[]):
+			side_number += 1
+			status.text += "Side %d: %d advancing, %d fighting, %d defending, %d going to defense, %d entering, %d retreating, %d queued\n" % [side_number,side.advancing,side.fighting,side.holding,side.moving_to_defend,side.entering,side.retreating,side.queued]
+			var goals: Array[String] = []
+			for goal in side.goals:
+				goals.append("%s %d/%d (+%d inbound)" % [goal.name,goal.established,goal.target,goal.inbound])
+			status.text += "Defense goals: "+", ".join(goals)+"\n"
+		status.text += "\n"
 	status.text += "\nCompleted: %d / 3\nAI vs AI, running three matches in the background." % results.size()
 
 func finish(reason: String) -> void:

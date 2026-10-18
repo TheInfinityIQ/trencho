@@ -42,6 +42,10 @@ func decide() -> void:
 	if not battle.battle_active or not battle.player_deployment_confirmed:
 		last_decision = "Waiting for player’s first deployment"
 		return
+	_assign_available()
+	if not advance_only and (priority() == "WAIT" or not uncommitted.is_empty()):
+		last_decision = "Waiting for committed defenders to establish"
+		return
 	battle.refresh_occupancy()
 	if planned_package.is_empty(): planned_package = next_package()
 	var planned: Dictionary = battle.deployment_manager.resolve_package(planned_package)
@@ -82,6 +86,7 @@ func decide() -> void:
 		battle.telemetry.event("AI_DEPLOYMENT_DECISION",{"team":team,"available_command":battle.economies[team].current_command+result.total_cost,"cards_chosen":result.resolved_deployment.squad.source_cards.map(func(card): return card.card_id),"package_cost":result.total_cost,"reason":last_decision,"squad_id":result.resolved_deployment.squad.squad_id})
 		deployment_cooldown = maxf(1.0,battle.tuning.enemy_decision_interval)
 		uncommitted.append(result.resolved_deployment.squad.squad_id)
+		_assign_available()
 		chosen_lane = lane
 		chosen_deployment = " + ".join(package.map(func(card): return card.display_name))
 		planned_package.clear()
@@ -117,19 +122,20 @@ func _assign_available() -> void:
 			uncommitted.erase(id)
 			continue
 		var squad: BattleSquad = battle.squad_commands.squads[id]
-		if squad.living_members().is_empty() or (squad.combat_center.y if team == 1 else battle.field_size.y-squad.combat_center.y) < battle.tuning.enemy_defense_depth: continue
+		if battle.squad_commands.count_members(squad) == 0: continue
 		var key := "" if advance_only else priority()
 		if key == "WAIT":
 			reinforcement_priority = "Waiting for committed defenders to establish"
 			continue
-		uncommitted.erase(id)
 		reinforcement_priority = key if not key.is_empty() else "Advance"
 		if key.is_empty():
+			uncommitted.erase(id)
 			battle.telemetry.event("AI_ASSIGNMENT",{"team":team,"squad_id":id,"reason":"ADVANCE_EXCESS"})
 			continue
 		var target_id: int = doctrine_points.get(key,-1)
 		var response: Dictionary = battle.squad_commands.issue_group([squad],"DEFEND",anchor(key),0,PackedVector2Array(),target_id)
 		if response.success:
+			uncommitted.erase(id)
 			battle.telemetry.event("AI_ASSIGNMENT",{"team":team,"squad_id":id,"reason":("REINFORCE_" if target_id >= 0 else "ESTABLISH_")+key.to_upper(),"point_id":response.defensive_point_id})
 			doctrine_points[key] = response.defensive_point_id
 			battle.squad_commands.points.update(0,true)

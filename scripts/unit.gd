@@ -170,11 +170,7 @@ func _simulate(delta: float) -> void:
 			_move_defender(route_target,delta,strategic)
 			_update_entry_status()
 			return
-		velocity = direction_vector * strategic
-		if is_instance_valid(battle) and not battle.formation_manager.can_move_to(global_position + velocity * delta, self):
-			velocity = Vector2.ZERO
-		else:
-			move_and_slide()
+		_move_defender(global_position + direction_vector * 300,delta,strategic)
 		_update_entry_status()
 
 func nearest_enemy() -> Unit:

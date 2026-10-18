@@ -50,10 +50,29 @@ func state_snapshot() -> Dictionary:
 	return {"time":game.simulation_time,"scores":game.scores,"units":units,"unit_rng":str(game.unit_rng.state),
 		"ai_rng":[str(game.enemy_controller.rng.state),str(game.player_controller.rng.state)],"pending":game.formation_manager.pending.size()}
 
+func side_status(side: int) -> Dictionary:
+	var counts := {"entering":0,"fighting":0,"retreating":0,"holding":0,"moving_to_defend":0,"advancing":0,"queued":0,"goals":[]}
+	for unit in game.units:
+		if unit.team_id != side: continue
+		var role := "advancing"
+		if not unit.has_entered_battlefield: role = "entering"
+		elif unit.state == Unit.State.RETREATING: role = "retreating"
+		elif unit.is_attacking or unit.state == Unit.State.ENGAGING: role = "fighting"
+		elif unit.squad != null and unit.squad.intent == "DEFEND":
+			role = "holding" if unit.defense_established else "moving_to_defend"
+		counts[role] += 1
+	for slot in game.formation_manager.pending:
+		if slot.team == side: counts.queued += 1
+	var ai = game.enemy_controller if side == 1 else game.player_controller
+	for key in ["left","center","right"]:
+		counts.goals.append({"name":key,"established":ai.defender_count(key),"inbound":ai.defender_count(key,true)-ai.defender_count(key),"target":20 if ai.doctrine == "TRIANGLE" and key == "center" else 10})
+	return counts
+
 func write_status(completed: bool, termination: String = "") -> void:
 	var status := {"completed":completed,"termination":termination,"simulation_seconds":game.simulation_time,
 		"real_seconds":(Time.get_ticks_msec()-started)/1000.0,"scores":game.scores,
 		"winner":game.winner,"surrendered_team":game.surrendered_team,"living_soldiers":game.units.size(),
+		"sides":[side_status(1),side_status(2)],
 		"doctrines":game.match_options.doctrines,"seed":game.tuning.random_seed,
 		"combat_log":ProjectSettings.globalize_path(game.telemetry.export_path) if not game.telemetry.export_path.is_empty() else ""}
 	if completed:
