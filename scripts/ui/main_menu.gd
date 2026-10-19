@@ -30,7 +30,7 @@ func _ready() -> void:
 	title.add_theme_font_size_override("font_size",54)
 	column.add_child(title)
 	var subtitle := Label.new()
-	subtitle.text = "Draw the order. Build the force."
+	subtitle.text = "Draw the order. Build the force.\n" + str(ProjectSettings.get_setting("application/config/version"))
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.modulate = Color("a1becb")
 	column.add_child(subtitle)
@@ -49,3 +49,6 @@ func _ready() -> void:
 	hint.add_theme_font_size_override("font_size",14)
 	hint.modulate = Color("a1becb")
 	column.add_child(hint)
+
+	if options.has("build-smoke"):
+		get_tree().root.add_child.call_deferred(preload("res://scripts/systems/build_smoke.gd").new())

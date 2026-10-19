@@ -136,7 +136,7 @@ func run() -> void:
 	var deep := spawn(2,6)
 	var path := PackedVector2Array([Vector2(2000,4000),Vector2(2400,3500),Vector2(3200,3500)])
 	var r: Dictionary = commands.issue_group([deep],"DEFEND",Vector2(3200,3500),0,path)
-	check(r.success and commands.orders[deep.order_id].facing == Vector2.RIGHT,"route sets oriented front facing")
+	check(r.success and commands.orders[deep.order_id].facing == Vector2.UP,"route tangent does not rotate the enemy-facing player front")
 	check(commands.orders[deep.order_id].blocks[0].rect.size==Vector2(640,1920),"deep blueprint persists independently of rotation")
 	clear()
 	# Full block loss immediately promotes an intact reserve block.

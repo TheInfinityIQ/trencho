@@ -71,16 +71,62 @@ func select_unit(unit: Unit, additive: bool = false) -> void:
 		squad.selected = true
 	selection_changed.emit()
 
-func point_anchor_at(world: Vector2, tolerance: float) -> int:
+func anchor_tolerance() -> float:
+	return 14.0/maxf(0.001,battle.get_node("Camera2D").zoom.x)
+
+func anchor_at(team: int, world: Vector2, tolerance: float = -1) -> int:
+	if not world.is_finite(): return -1
 	var nearest := -1
-	var distance := tolerance*tolerance
+	var distance := pow(anchor_tolerance() if tolerance < 0 else tolerance,2)
 	for id in orders:
-		if orders[id].team != 2: continue
+		if orders[id].team != team: continue
 		var candidate: float = world.distance_squared_to(orders[id].center)
-		if candidate <= distance:
+		if candidate < distance or (is_equal_approx(candidate,distance) and (nearest < 0 or id < nearest)):
 			nearest = id
 			distance = candidate
 	return nearest
+
+func point_anchor_at(world: Vector2, tolerance: float) -> int:
+	return anchor_at(2,world,tolerance)
+
+func reinforcement_target(team: int, endpoint: Vector2) -> int:
+	# The visible/selectable shield is the semantic target, including inbound
+	# points. Owned territory and nearby soldiers are never implicit commands.
+	return anchor_at(team,endpoint)
+
+# Intent comes only from the shield; recent stroke geometry chooses a broad sector.
+# This is pure and shared by purchase previews, selected squads and committed orders.
+func reinforcement_preference(id: int, approach: PackedVector2Array) -> Vector2:
+	if not orders.has(id): return Vector2.INF
+	var order: Dictionary = orders[id]
+	var left := INF
+	var right := -INF
+	for block in fronts.blocks(order):
+		if block.role != "FRONT": continue
+		left = minf(left,block.rect.position.x)
+		right = maxf(right,block.rect.end.x)
+	if not is_finite(left): return order.center
+	var preferred := clampf(0,left,right)
+	var remaining: float = fronts.spacing()*4
+	var traveled := 0.0
+	var sample: Vector2 = order.center
+	for index in range(approach.size()-1,0,-1):
+		var start: Vector2 = approach[index]
+		var end: Vector2 = approach[index-1]
+		if not start.is_finite() or not end.is_finite(): return order.center
+		var length := start.distance_to(end)
+		if length <= 0.001: continue
+		var taken := minf(length,remaining)
+		sample = start.lerp(end,taken/length)
+		traveled += taken
+		remaining -= taken
+		if remaining <= 0: break
+	if traveled >= fronts.spacing()*0.5:
+		var lateral: float = fronts.local(order,sample).x
+		var deadzone: float = maxf(fronts.spacing()*0.75,(right-left)*0.15)
+		if lateral < -deadzone: preferred = left
+		elif lateral > deadzone: preferred = right
+	return fronts.world(order,Vector2(clampf(preferred,left,right),0))
 
 func select_point(id: int) -> void:
 	clear_selection()
@@ -207,6 +253,8 @@ func apply_validated(group: Array, kind: String, plan: Dictionary = {}, route: P
 		response.expanded = plan.expanded
 		response.defensive_point_id = shared_id
 	if kind == "DEFEND" and battle.telemetry != null: battle.telemetry.point_changed(shared_id)
+	response["reinforcement"] = target_id >= 0 and kind == "DEFEND"
+	battle.telemetry.event("COMMAND_INTERPRETATION",{"team":group[0].team,"gesture_type":plan.get("gesture_type",kind),"anchor_targeted":response.reinforcement,"point_id":shared_id if kind=="DEFEND" else -1,"final_command":"REINFORCE" if response.reinforcement else kind,"failure_reason":"","preferred_sector":plan.get("preferred_sector","CENTER")})
 	response.route = route.duplicate()
 	var direction := Vector2.UP if group[0].team == 2 else Vector2.DOWN
 	if route.size() >= 2: direction = route[0].direction_to(route[1])
@@ -261,6 +309,8 @@ func apply_validated(group: Array, kind: String, plan: Dictionary = {}, route: P
 	prune()
 	if kind == "DEFEND":
 		fronts.install(orders[shared_id],plan)
+		for block in plan.get("proposed_blocks",[]):
+			battle.telemetry.event("FORMATION_BLOCK_ASSIGNED",{"point_id":shared_id,"squad_id":block.squad,"classification":"RESERVE" if block.role=="RESERVE" else "FRONTAGE","position":block.rect.position,"size":block.rect.size,"facing":plan.facing})
 	points.clock = 0
 	command_resolved.emit(response)
 	return response
@@ -368,11 +418,11 @@ func _nearest_home(positions: Array, origin: Vector2) -> int:
 			nearest = index
 	return nearest
 
-func issue_selected(kind: String, center: Vector2 = Vector2.ZERO, radius: float = 0, route: PackedVector2Array = PackedVector2Array()) -> Dictionary:
+func issue_selected(kind: String, center: Vector2 = Vector2.ZERO, radius: float = 0, route: PackedVector2Array = PackedVector2Array(), approach: PackedVector2Array = PackedVector2Array()) -> Dictionary:
 	prune()
-	return issue_group(selected_squads(),kind,center,radius,route)
+	return issue_group(selected_squads(),kind,center,radius,route,-1,Vector2.ZERO,approach)
 
-func issue_group(group: Array, kind: String, center: Vector2 = Vector2.ZERO, _radius: float = 0, route: PackedVector2Array = PackedVector2Array(), target_id: int = -1, facing: Vector2 = Vector2.ZERO) -> Dictionary:
+func issue_group(group: Array, kind: String, center: Vector2 = Vector2.ZERO, _radius: float = 0, route: PackedVector2Array = PackedVector2Array(), target_id: int = -1, facing: Vector2 = Vector2.ZERO, approach: PackedVector2Array = PackedVector2Array()) -> Dictionary:
 	var response := result(false,kind,"NO_SELECTED_UNITS")
 	response.team = group[0].team if not group.is_empty() else 2
 	if not battle.battle_active: response.failure_reason = "BATTLE_ENDED"
@@ -387,12 +437,14 @@ func issue_group(group: Array, kind: String, center: Vector2 = Vector2.ZERO, _ra
 				response.failure_reason = "POSITION_UNREACHABLE"
 				command_resolved.emit(response)
 				return response
-		if not route.is_empty() and kind == "ADVANCE": target_id = points.point_at(group[0].team,route[-1])
+		if not route.is_empty() and kind == "ADVANCE": target_id = reinforcement_target(group[0].team,route[-1])
 		if target_id >= 0 and orders.has(target_id):
 			if orders[target_id].team != group[0].team:
 				response.failure_reason = "INVALID_DEFEND_LOCATION"
 			else:
-				var reinforcement: Dictionary = fronts.plan(group,center,route,target_id,facing)
+				var preference: Vector2 = reinforcement_preference(target_id,approach if not approach.is_empty() else route) if kind == "ADVANCE" else Vector2.INF
+				var reinforcement: Dictionary = fronts.plan(group,center,route,target_id,facing,preference)
+				reinforcement["gesture_type"] = kind
 				if reinforcement.success: return apply_validated(group,"DEFEND",reinforcement,route,target_id)
 				response.failure_reason = reinforcement.failure_reason
 		elif kind == "ADVANCE": return apply_validated(group,kind,{},route)
@@ -421,8 +473,12 @@ func tick(delta: float = 1.0/60.0) -> void:
 				squad.combat_target = member.target
 				break
 		squad.breakthrough_remaining = maxf(0,squad.breakthrough_remaining-delta)
+	var phase := Time.get_ticks_usec() if battle.profile_enabled else 0
 	fronts.tick(delta)
+	if battle.profile_enabled: battle.profile_add("fronts_us",Time.get_ticks_usec()-phase)
+	phase = Time.get_ticks_usec() if battle.profile_enabled else 0
 	points.update(delta)
+	if battle.profile_enabled: battle.profile_add("territory_us",Time.get_ticks_usec()-phase)
 	for id in orders.keys():
 		var order: Dictionary = orders[id]
 		_refresh_enemies(order)

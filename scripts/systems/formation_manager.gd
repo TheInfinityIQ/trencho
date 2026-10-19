@@ -38,12 +38,17 @@ func generate_slots(rectangle: Rect2, team: int) -> Array[Vector2]:
 	return slots
 
 func terrain_blocks(point: Vector2) -> bool:
+	var begin := Time.get_ticks_usec() if battle.profile_enabled else 0
 	var query := PhysicsShapeQueryParameters2D.new()
 	query.shape = terrain_shape
 	query.transform = Transform2D(0, point)
 	query.collision_mask = 1
 	query.collide_with_areas = false
-	return not battle.get_world_2d().direct_space_state.intersect_shape(query, 1).is_empty()
+	var blocked: bool = not battle.get_world_2d().direct_space_state.intersect_shape(query, 1).is_empty()
+	if battle.profile_enabled:
+		battle.profile_add("terrain_us",Time.get_ticks_usec()-begin)
+		battle.profile_add("terrain_queries",1)
+	return blocked
 
 func contains_center(rectangle: Rect2, point: Vector2) -> bool:
 	return point.x >= rectangle.position.x - 0.01 and point.y >= rectangle.position.y - 0.01 and point.x <= rectangle.end.x + 0.01 and point.y <= rectangle.end.y + 0.01
@@ -260,6 +265,7 @@ func cancel_pending_team(team: int) -> void:
 		pending_counts[id] = pending_counts.get(id,0)+1
 
 func can_move_to(point: Vector2, ignored: Unit) -> bool:
+	var begin := Time.get_ticks_usec() if battle.profile_enabled else 0
 	var minimum: float = battle.tuning.unit_radius * 2 + 2
 	var first := Vector2i(((point - Vector2.ONE * minimum) / _body_cell_size()).floor())
 	var last := Vector2i(((point + Vector2.ONE * minimum) / _body_cell_size()).floor())
@@ -267,7 +273,9 @@ func can_move_to(point: Vector2, ignored: Unit) -> bool:
 		for x in range(first.x,last.x+1):
 			for unit in body_cells.get(Vector2i(x,y),[]):
 				if unit != ignored and is_instance_valid(unit) and unit.is_alive() and unit.global_position.distance_squared_to(point) < minimum * minimum:
+					if battle.profile_enabled: battle.profile_add("body_checks_us",Time.get_ticks_usec()-begin)
 					return false
+	if battle.profile_enabled: battle.profile_add("body_checks_us",Time.get_ticks_usec()-begin)
 	return not terrain_blocks(point)
 
 # Bounded body-only visibility for a nearby route guide. Terrain remains subject

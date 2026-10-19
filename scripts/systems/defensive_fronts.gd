@@ -7,6 +7,8 @@ var commands: RefCounted:
 var battle: Node
 var consolidation_clock = 0.0
 var transfers: Array = []
+# Validated weak bindings avoid rebuilding a squad's living array per slot.
+var member_cache: Dictionary = {}
 
 func _init(service: RefCounted) -> void:
 	# Avoid a service ownership cycle.
@@ -38,26 +40,37 @@ func remember(squad: BattleSquad, specification: Dictionary) -> void:
 	for point in positions: original = original.expand(point)
 	squad.formation_size = specification.requested_rectangle.size if specification.has("requested_rectangle") else original.grow(battle.tuning.unit_radius).size
 
-func facing(team: int, route: PackedVector2Array, explicit: Vector2 = Vector2.ZERO) -> Vector2:
+func facing(team: int, _route: PackedVector2Array, explicit: Vector2 = Vector2.ZERO) -> Vector2:
+	# Drawing communicates Hold here; route tangents never rotate player fronts.
 	if explicit.length_squared() > 0.01: return explicit.normalized()
-	for index in range(route.size()-1,0,-1):
-		if route[index].distance_to(route[index-1]) >= battle.tuning.unit_radius:
-			return route[index-1].direction_to(route[index])
 	return Vector2.UP if team == 2 else Vector2.DOWN
 
+func member(sid: int, index: int) -> Unit:
+	var key := Vector2i(sid,index)
+	if not commands.squads.has(sid):
+		member_cache.erase(key)
+		return null
+	if member_cache.has(key):
+		var cached: Unit = member_cache[key].get_ref()
+		if is_instance_valid(cached) and cached.is_alive() and cached.squad != null and cached.squad.squad_id == sid and cached.squad_member_index == index: return cached
+		member_cache.erase(key)
+	if not commands.squads.has(sid): return null
+	for unit in commands.squads[sid].members:
+		if is_instance_valid(unit) and unit.is_alive() and unit.squad_member_index == index:
+			if member_cache.size() >= 2048: member_cache.clear()
+			member_cache[key] = weakref(unit)
+			return unit
+	return null
+
 func alive(sid: int, index: int) -> bool:
+	if member(sid,index) != null: return true
 	if not commands.squads.has(sid): return false
-	for unit in commands.squads[sid].living_members():
-		if unit.squad_member_index == index: return true
 	for slot in battle.formation_manager.pending:
 		if slot.specification.squad.squad_id == sid and slot.member_index == index: return true
 	return false
 
 func occupant(slot: Dictionary) -> Unit:
-	if slot.who.is_empty() or not commands.squads.has(slot.who.squad): return null
-	for unit in commands.squads[slot.who.squad].living_members():
-		if unit.squad_member_index == slot.who.index: return unit
-	return null
+	return null if slot.who.is_empty() else member(slot.who.squad,slot.who.index)
 
 func occupied(slot: Dictionary) -> bool:
 	return not slot.who.is_empty() and alive(slot.who.squad,slot.who.index)
@@ -120,7 +133,7 @@ func make_block(order: Dictionary, squad: BattleSquad, offset: Vector2, role: St
 	return block
 
 # Pure plan: commands and previews share it. No live homes are moved here.
-func plan(group: Array, center: Vector2, route: PackedVector2Array, target: int = -1, explicit: Vector2 = Vector2.ZERO) -> Dictionary:
+func plan(group: Array, center: Vector2, route: PackedVector2Array, target: int = -1, explicit: Vector2 = Vector2.ZERO, preference: Vector2 = Vector2.INF) -> Dictionary:
 	var result: Dictionary = commands.result(false,"DEFEND","POSITION_UNREACHABLE")
 	if group.is_empty() or not center.is_finite(): return result
 	if target < 0 and not commands.points.legal(commands.points.cell_at(center),group[0].team):
@@ -142,7 +155,8 @@ func plan(group: Array, center: Vector2, route: PackedVector2Array, target: int 
 	var initial_depth = 0.0
 	if target < 0:
 		for squad in group: initial_depth += local_rect(squad).size.y
-	var endpoint = local(order,route[-1] if not route.is_empty() else center)
+	var endpoint = local(order,preference if preference.is_finite() else (route[-1] if not route.is_empty() else center))
+	result["preferred_sector"] = "CENTER" if absf(endpoint.x)<spacing()*0.5 else ("LEFT" if endpoint.x<0 else "RIGHT")
 	for squad in group:
 		var rectangle = local_rect(squad)
 		var options: Array = []
@@ -330,10 +344,15 @@ func tick(delta: float) -> void:
 		order.blocks = order.blocks.filter(func(block): return block.role == "FRONT" or block.slots.any(func(slot): return occupied(slot)))
 		replace_lost_blocks(order)
 		var vacancies = vacant_front(order)
+		if order.get("logged_vacancies",0) != vacancies.size():
+			battle.telemetry.event("DEFENSIVE_VACANCIES_CHANGED",{"point_id":order.id,"vacancies":vacancies.size(),"reserves":reserves(order).size()})
+			order.logged_vacancies = vacancies.size()
 		if vacancies.is_empty():
 			order.wave_remaining = -1.0
 		else:
-			if order.wave_remaining < 0: order.wave_remaining = battle.tuning.reserve_wave_delay
+			if order.wave_remaining < 0:
+				order.wave_remaining = battle.tuning.reserve_wave_delay
+				battle.telemetry.event("RESERVE_WAVE_STARTED",{"point_id":order.id,"vacancies":vacancies.size(),"reserves":reserves(order).size(),"delay":order.wave_remaining})
 			var total = 0
 			for block in blocks(order):
 				for slot in block.slots:
@@ -342,10 +361,14 @@ func tick(delta: float) -> void:
 			order.wave_remaining -= delta
 			if order.wave_remaining <= 0:
 				var available = reserves(order)
+				var assignments: Array = []
 				for vacancy in vacancies:
 					if available.is_empty(): break
 					available.sort_custom(func(a,b): return absf(a.local.x-vacancy.local.x) < absf(b.local.x-vacancy.local.x) if not is_equal_approx(absf(a.local.x-vacancy.local.x),absf(b.local.x-vacancy.local.x)) else a.home.distance_squared_to(vacancy.home)<b.home.distance_squared_to(vacancy.home))
-					relocate(available.pop_front(),vacancy)
+					var reserve: Dictionary = available.pop_front()
+					assignments.append({"member":reserve.who.duplicate(),"from":reserve.home,"to":vacancy.home})
+					relocate(reserve,vacancy)
+				battle.telemetry.event("RESERVE_WAVE_ASSIGNED",{"point_id":order.id,"vacancies":vacancies.size(),"assignments":assignments,"unused_reserves":available.size()})
 				order.wave_remaining = -1.0
 		# Keep casualty holes; territory pressure must not globally repack homes.
 		sync(order)

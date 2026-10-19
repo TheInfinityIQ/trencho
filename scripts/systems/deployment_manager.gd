@@ -138,7 +138,7 @@ func request_deployment(team: int, cards: Array, lane: int) -> Dictionary:
 	return request_formation(team, cards, battle.preset_footprint(team, lane))
 
 # New player/bot order path: geometry sets entry shape, never battlefield legality.
-func validate_squad(team: int, cards: Array, rectangle: Rect2, kind: String, center: Vector2 = Vector2.ZERO, radius: float = 0, route: PackedVector2Array = PackedVector2Array()) -> Dictionary:
+func validate_squad(team: int, cards: Array, rectangle: Rect2, kind: String, center: Vector2 = Vector2.ZERO, radius: float = 0, route: PackedVector2Array = PackedVector2Array(), approach: PackedVector2Array = PackedVector2Array()) -> Dictionary:
 	var response := resolve_package(cards)
 	if not response.is_valid: return response
 	if team not in [1, 2]: return rejected("INVALID_ZONE", response.total_cost)
@@ -158,7 +158,7 @@ func validate_squad(team: int, cards: Array, rectangle: Rect2, kind: String, cen
 	response.resolved_deployment["lane"] = battle.lane_for_x(rectangle.get_center().x)
 	response.resolved_deployment["reinforcements"] = true
 	response.resolved_deployment["intent_order"] = true
-	var target_id: int = battle.squad_commands.points.point_at(team,route[-1]) if kind == "ADVANCE" and not route.is_empty() else -1
+	var target_id: int = battle.squad_commands.reinforcement_target(team,route[-1]) if kind == "ADVANCE" and not route.is_empty() else -1
 	var plan: Dictionary = {}
 	if kind == "DEFEND" or target_id >= 0:
 		var virtual_squad := preload("res://scripts/systems/squad.gd").new()
@@ -167,17 +167,18 @@ func validate_squad(team: int, cards: Array, rectangle: Rect2, kind: String, cen
 		virtual_squad.unit_type = response.resolved_deployment.unit_type
 		assign_components(response.resolved_deployment)
 		battle.squad_commands.fronts.remember(virtual_squad,response.resolved_deployment)
-		plan = battle.squad_commands.fronts.plan([virtual_squad],center,route,target_id)
+		plan = battle.squad_commands.fronts.plan([virtual_squad],center,route,target_id,Vector2.ZERO,battle.squad_commands.reinforcement_preference(target_id,approach if not approach.is_empty() else route) if target_id>=0 else Vector2.INF)
 		if not plan.success:
 			var failure := rejected(plan.failure_reason,response.total_cost)
 			failure["defense_plan"] = plan
 			return failure
+	if not plan.is_empty(): plan["gesture_type"] = kind
 	response["defense_plan"] = plan
 	return response
 
-func request_squad(team: int, cards: Array, rectangle: Rect2, kind: String, center: Vector2 = Vector2.ZERO, radius: float = 0, route: PackedVector2Array = PackedVector2Array()) -> Dictionary:
+func request_squad(team: int, cards: Array, rectangle: Rect2, kind: String, center: Vector2 = Vector2.ZERO, radius: float = 0, route: PackedVector2Array = PackedVector2Array(), approach: PackedVector2Array = PackedVector2Array()) -> Dictionary:
 	battle.deployment_requested.emit(team, cards, rectangle)
-	var response := validate_squad(team, cards, rectangle, kind, center, radius, route)
+	var response := validate_squad(team, cards, rectangle, kind, center, radius, route, approach)
 	if not response.is_valid:
 		battle.last_rejection = response.failure_reason
 		battle.deployment_rejected.emit(team, response.failure_reason)
@@ -185,11 +186,24 @@ func request_squad(team: int, cards: Array, rectangle: Rect2, kind: String, cent
 	battle.economies[team].spend(response.total_cost)
 	var squad: BattleSquad = battle.squad_commands.create_squad(response.resolved_deployment)
 	battle.formation_manager.reserve(response.resolved_deployment)
-	var target_id: int = battle.squad_commands.points.point_at(team,route[-1]) if kind == "ADVANCE" and not route.is_empty() else -1
+	var target_id: int = battle.squad_commands.reinforcement_target(team,route[-1]) if kind == "ADVANCE" and not route.is_empty() else -1
 	if kind == "DEFEND" or target_id >= 0:
-		response.defense_plan = battle.squad_commands.fronts.plan([squad],center,route,target_id)
+		response.defense_plan = battle.squad_commands.fronts.plan([squad],center,route,target_id,Vector2.ZERO,battle.squad_commands.reinforcement_preference(target_id,approach if not approach.is_empty() else route) if target_id>=0 else Vector2.INF)
+		response.defense_plan["gesture_type"] = kind
 	response["command_result"] = battle.squad_commands.apply_validated([squad], "DEFEND" if target_id >= 0 else kind, response.defense_plan, route, target_id)
 	if team == 2: battle.player_deployment_confirmed = true
 	battle.last_rejection = ""
 	battle.deployment_accepted.emit(team, response.resolved_deployment)
 	return response
+
+
+# A functional starting shape for every current legal package. Editing remains
+# optional and is never silently undone while the blueprint is open.
+func default_blueprint_size(count: int) -> Vector2:
+	var diameter: float = battle.tuning.unit_radius*2
+	var step: float = maxf(battle.tuning.spawn_spacing,diameter+4)
+	var max_columns := maxi(1,floori((minf(3000,battle.field_size.x)-diameter)/step)+1)
+	var max_rows := maxi(1,floori((1800-diameter)/step)+1)
+	var columns := clampi(ceili(sqrt(maxi(1,count)*2.0)),maxi(1,ceili(float(count)/max_rows)),max_columns)
+	var rows := ceili(float(maxi(1,count))/columns)
+	return Vector2((columns-1)*step+diameter,(rows-1)*step+diameter)

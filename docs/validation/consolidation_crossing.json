@@ -1,0 +1,1128 @@
+{
+  "base_commit": "28cd68000bbb63ecf3d84da723347f2ad4f024b7",
+  "hardware": {
+    "cpu": "13th Gen Intel Core i7-13700F",
+    "gpu": "NVIDIA GeForce RTX 4070 Ti",
+    "renderer": "Vulkan Forward+",
+    "viewport": "1280x800"
+  },
+  "fixture": {
+    "moving_units": 144,
+    "established_defenders": 48,
+    "population": 192,
+    "physics_hz": 60,
+    "ticks_per_case": 1200,
+    "warmup_ticks": 180
+  },
+  "normalization_notes": [
+    "Counter values are milliseconds; initial probe used _us names despite dividing by 1000. These names have been corrected here. Recovery max_slice_us remains microseconds.",
+    "Initial headless before wall_frame_ms was measured on physics_frame, renamed physics_interval_ms. No rendered-frame conclusion is drawn from that headless metric.",
+    "Nested counters overlap: do not sum. Engine monitors may lag up to one second.",
+    "Initial instrumented CPU baseline overlapped some other engine validation, so absolute before/after CPU values are indicative only. Rendered comparison used isolated uninstrumented runs.",
+    "These are scripted stress fixtures, not a hardware-independent frame-rate promise or replay of video 9."
+  ],
+  "reports": {
+    "cpu_before": {
+      "build": "0.5.1-army-flow",
+      "cases": [
+        {
+          "case": "open_control",
+          "defensive_slots": 48,
+          "initial_living": 192,
+          "maxima": {
+            "moving": 144,
+            "stalled": 30,
+            "traversing": 91
+          },
+          "recovery": {
+            "cancelled": 1,
+            "cells": 108813,
+            "max_cells_per_tick": 128,
+            "max_queue": 10,
+            "max_slice_us": 2039,
+            "no_path": 7,
+            "paths": 38,
+            "requests": 46
+          },
+          "simulation_seconds": 19.9833333333335,
+          "ticks": 1200,
+          "timings": {
+            "engine_physics_ms": {
+              "max": 47.86,
+              "mean": 27.6846411764705,
+              "p95": 47.86,
+              "p99": 47.86,
+              "samples": 1020
+            },
+            "engine_process_ms": {
+              "max": 0.133,
+              "mean": 0.0450480392156869,
+              "p95": 0.133,
+              "p99": 0.133,
+              "samples": 1020
+            },
+            "living": {
+              "max": 192,
+              "mean": 192.0,
+              "p95": 192,
+              "p99": 192,
+              "samples": 1020
+            },
+            "moving": {
+              "max": 144,
+              "mean": 137.876470588235,
+              "p95": 144,
+              "p99": 144,
+              "samples": 1020
+            },
+            "stalled": {
+              "max": 30,
+              "mean": 10.2294117647059,
+              "p95": 22,
+              "p99": 27,
+              "samples": 1020
+            },
+            "terrain_queries": {
+              "max": 573,
+              "mean": 465.337254901961,
+              "p95": 543,
+              "p99": 559,
+              "samples": 1020
+            },
+            "traversing": {
+              "max": 91,
+              "mean": 60.0647058823529,
+              "p95": 90,
+              "p99": 90,
+              "samples": 1020
+            },
+            "battle_ms": {
+              "max": 9.076,
+              "mean": 3.89653039215686,
+              "p95": 5.618,
+              "p99": 7.076,
+              "samples": 1020
+            },
+            "body_checks_ms": {
+              "max": 10.479,
+              "mean": 3.49396862745097,
+              "p95": 5.713,
+              "p99": 7.757,
+              "samples": 1020
+            },
+            "commands_ms": {
+              "max": 7.015,
+              "mean": 2.83736078431373,
+              "p95": 4.052,
+              "p99": 5.541,
+              "samples": 1020
+            },
+            "formation_ms": {
+              "max": 2.049,
+              "mean": 0.511115686274511,
+              "p95": 0.999,
+              "p99": 1.533,
+              "samples": 1020
+            },
+            "fronts_ms": {
+              "max": 3.078,
+              "mean": 1.21077647058824,
+              "p95": 1.811,
+              "p99": 2.497,
+              "samples": 1020
+            },
+            "terrain_ms": {
+              "max": 4.312,
+              "mean": 1.34701666666667,
+              "p95": 2.169,
+              "p99": 3.007,
+              "samples": 1020
+            },
+            "territory_ms": {
+              "max": 0.774,
+              "mean": 0.0198225490196078,
+              "p95": 0.25,
+              "p99": 0.322,
+              "samples": 1020
+            },
+            "units_ms": {
+              "max": 31.446,
+              "mean": 10.828694117647,
+              "p95": 16.206,
+              "p99": 22.297,
+              "samples": 1020
+            },
+            "physics_interval_ms": {
+              "max": 47.895,
+              "mean": 17.784068627451,
+              "p95": 25.537,
+              "p99": 34.833,
+              "samples": 1020
+            }
+          }
+        },
+        {
+          "case": "friendly_crossing",
+          "defensive_slots": 48,
+          "initial_living": 192,
+          "maxima": {
+            "moving": 144,
+            "stalled": 61,
+            "traversing": 38
+          },
+          "recovery": {
+            "cancelled": 12,
+            "cells": 128180,
+            "max_cells_per_tick": 128,
+            "max_queue": 32,
+            "max_slice_us": 2031,
+            "no_path": 28,
+            "paths": 24,
+            "requests": 97
+          },
+          "simulation_seconds": 20.0000000000001,
+          "ticks": 1200,
+          "timings": {
+            "engine_physics_ms": {
+              "max": 37.671,
+              "mean": 24.1873107843136,
+              "p95": 36.211,
+              "p99": 37.671,
+              "samples": 1020
+            },
+            "engine_process_ms": {
+              "max": 0.094,
+              "mean": 0.0340441176470589,
+              "p95": 0.094,
+              "p99": 0.094,
+              "samples": 1020
+            },
+            "living": {
+              "max": 192,
+              "mean": 192.0,
+              "p95": 192,
+              "p99": 192,
+              "samples": 1020
+            },
+            "moving": {
+              "max": 144,
+              "mean": 118.136274509804,
+              "p95": 135,
+              "p99": 139,
+              "samples": 1020
+            },
+            "stalled": {
+              "max": 61,
+              "mean": 36.4117647058824,
+              "p95": 55,
+              "p99": 60,
+              "samples": 1020
+            },
+            "terrain_queries": {
+              "max": 541,
+              "mean": 401.530392156863,
+              "p95": 481,
+              "p99": 526,
+              "samples": 1020
+            },
+            "traversing": {
+              "max": 38,
+              "mean": 22.271568627451,
+              "p95": 35,
+              "p99": 36,
+              "samples": 1020
+            },
+            "battle_ms": {
+              "max": 9.327,
+              "mean": 4.07088529411764,
+              "p95": 5.077,
+              "p99": 7.468,
+              "samples": 1020
+            },
+            "body_checks_ms": {
+              "max": 7.753,
+              "mean": 3.50545,
+              "p95": 4.492,
+              "p99": 6.341,
+              "samples": 1020
+            },
+            "commands_ms": {
+              "max": 6.692,
+              "mean": 2.95340882352941,
+              "p95": 3.739,
+              "p99": 5.703,
+              "samples": 1020
+            },
+            "formation_ms": {
+              "max": 2.027,
+              "mean": 0.585576470588235,
+              "p95": 0.931,
+              "p99": 1.475,
+              "samples": 1020
+            },
+            "fronts_ms": {
+              "max": 2.639,
+              "mean": 1.16950294117647,
+              "p95": 1.496,
+              "p99": 2.204,
+              "samples": 1020
+            },
+            "terrain_ms": {
+              "max": 2.848,
+              "mean": 1.13930882352941,
+              "p95": 1.481,
+              "p99": 2.056,
+              "samples": 1020
+            },
+            "territory_ms": {
+              "max": 0.583,
+              "mean": 0.0190372549019608,
+              "p95": 0.25,
+              "p99": 0.29,
+              "samples": 1020
+            },
+            "units_ms": {
+              "max": 23.085,
+              "mean": 10.5702352941176,
+              "p95": 12.704,
+              "p99": 18.451,
+              "samples": 1020
+            },
+            "physics_interval_ms": {
+              "max": 37.692,
+              "mean": 17.5934892156863,
+              "p95": 20.724,
+              "p99": 30.573,
+              "samples": 1020
+            }
+          }
+        }
+      ],
+      "engine": "4.7.2-stable (steam)",
+      "instrumented": true,
+      "mode": "cpu_headless",
+      "notes": "Actual physics-frame wall intervals; engine monitors can update late. Nested timers overlap and must not be summed. Timers and observation add measurement overhead. Not a deterministic timing guarantee.",
+      "raw_sha256": "5cfddeec7cafa75836193f334ba3ec4ed57c2c46ea3a90b7ff54edc868f63dfb"
+    },
+    "cpu_after_lookup": {
+      "build": "0.5.1-army-flow",
+      "cases": [
+        {
+          "case": "open_control",
+          "defensive_slots": 48,
+          "initial_living": 192,
+          "maxima": {
+            "moving": 144,
+            "stalled": 30,
+            "traversing": 91
+          },
+          "recovery": {
+            "cancelled": 2,
+            "cells": 106412,
+            "max_cells_per_tick": 128,
+            "max_queue": 8,
+            "max_slice_us": 1282,
+            "no_path": 9,
+            "paths": 35,
+            "requests": 46
+          },
+          "simulation_seconds": 19.9833333333335,
+          "ticks": 1200,
+          "timings": {
+            "engine_physics_ms": {
+              "max": 19.554,
+              "mean": 16.2511009803921,
+              "p95": 17.165,
+              "p99": 19.554,
+              "samples": 1020
+            },
+            "engine_process_ms": {
+              "max": 0.081,
+              "mean": 0.02921568627451,
+              "p95": 0.081,
+              "p99": 0.081,
+              "samples": 1020
+            },
+            "living": {
+              "max": 192,
+              "mean": 192.0,
+              "p95": 192,
+              "p99": 192,
+              "samples": 1020
+            },
+            "moving": {
+              "max": 144,
+              "mean": 138.582352941176,
+              "p95": 144,
+              "p99": 144,
+              "samples": 1020
+            },
+            "physics_interval_ms": {
+              "max": 17.186,
+              "mean": 13.6550137254902,
+              "p95": 15.664,
+              "p99": 16.59,
+              "samples": 1020
+            },
+            "stalled": {
+              "max": 30,
+              "mean": 10.4941176470588,
+              "p95": 22,
+              "p99": 27,
+              "samples": 1020
+            },
+            "terrain_queries": {
+              "max": 573,
+              "mean": 473.502941176471,
+              "p95": 546,
+              "p99": 559,
+              "samples": 1020
+            },
+            "traversing": {
+              "max": 91,
+              "mean": 59.2911764705882,
+              "p95": 89,
+              "p99": 91,
+              "samples": 1020
+            },
+            "wall_frame_ms": {
+              "max": 17.183,
+              "mean": 13.6527723258096,
+              "p95": 15.629,
+              "p99": 16.584,
+              "samples": 1019
+            },
+            "battle_ms": {
+              "max": 3.701,
+              "mean": 2.44273039215686,
+              "p95": 2.894,
+              "p99": 3.312,
+              "samples": 1020
+            },
+            "body_checks_ms": {
+              "max": 4.328,
+              "mean": 2.86193333333333,
+              "p95": 3.716,
+              "p99": 3.899,
+              "samples": 1020
+            },
+            "commands_ms": {
+              "max": 2.789,
+              "mean": 1.5762362745098,
+              "p95": 1.844,
+              "p99": 2.087,
+              "samples": 1020
+            },
+            "formation_ms": {
+              "max": 1.288,
+              "mean": 0.414375490196078,
+              "p95": 0.692,
+              "p99": 0.786,
+              "samples": 1020
+            },
+            "fronts_ms": {
+              "max": 0.502,
+              "mean": 0.235142156862745,
+              "p95": 0.292,
+              "p99": 0.368,
+              "samples": 1020
+            },
+            "terrain_ms": {
+              "max": 1.613,
+              "mean": 1.06775784313725,
+              "p95": 1.274,
+              "p99": 1.379,
+              "samples": 1020
+            },
+            "territory_ms": {
+              "max": 0.286,
+              "mean": 0.0160049019607843,
+              "p95": 0.23,
+              "p99": 0.249,
+              "samples": 1020
+            },
+            "unit_telemetry_ms": {
+              "max": 1.738,
+              "mean": 1.2638931372549,
+              "p95": 1.43,
+              "p99": 1.565,
+              "samples": 1020
+            },
+            "units_ms": {
+              "max": 11.682,
+              "mean": 8.72219215686274,
+              "p95": 10.301,
+              "p99": 10.917,
+              "samples": 1020
+            }
+          }
+        },
+        {
+          "case": "friendly_crossing",
+          "defensive_slots": 48,
+          "initial_living": 192,
+          "maxima": {
+            "moving": 144,
+            "stalled": 61,
+            "traversing": 38
+          },
+          "recovery": {
+            "cancelled": 12,
+            "cells": 128180,
+            "max_cells_per_tick": 128,
+            "max_queue": 32,
+            "max_slice_us": 987,
+            "no_path": 28,
+            "paths": 24,
+            "requests": 97
+          },
+          "simulation_seconds": 20.0000000000001,
+          "ticks": 1200,
+          "timings": {
+            "engine_physics_ms": {
+              "max": 22.664,
+              "mean": 16.7829382352942,
+              "p95": 22.664,
+              "p99": 22.664,
+              "samples": 1020
+            },
+            "engine_process_ms": {
+              "max": 0.121,
+              "mean": 0.0338441176470589,
+              "p95": 0.121,
+              "p99": 0.121,
+              "samples": 1020
+            },
+            "living": {
+              "max": 192,
+              "mean": 192.0,
+              "p95": 192,
+              "p99": 192,
+              "samples": 1020
+            },
+            "moving": {
+              "max": 144,
+              "mean": 118.136274509804,
+              "p95": 135,
+              "p99": 139,
+              "samples": 1020
+            },
+            "physics_interval_ms": {
+              "max": 22.692,
+              "mean": 13.9493892156863,
+              "p95": 15.47,
+              "p99": 16.657,
+              "samples": 1020
+            },
+            "stalled": {
+              "max": 61,
+              "mean": 36.4117647058824,
+              "p95": 55,
+              "p99": 60,
+              "samples": 1020
+            },
+            "terrain_queries": {
+              "max": 541,
+              "mean": 401.530392156863,
+              "p95": 481,
+              "p99": 526,
+              "samples": 1020
+            },
+            "traversing": {
+              "max": 38,
+              "mean": 22.271568627451,
+              "p95": 35,
+              "p99": 36,
+              "samples": 1020
+            },
+            "wall_frame_ms": {
+              "max": 22.686,
+              "mean": 13.947638861629,
+              "p95": 15.447,
+              "p99": 16.652,
+              "samples": 1019
+            },
+            "battle_ms": {
+              "max": 4.861,
+              "mean": 2.67242745098039,
+              "p95": 3.099,
+              "p99": 3.379,
+              "samples": 1020
+            },
+            "body_checks_ms": {
+              "max": 5.474,
+              "mean": 2.98196176470588,
+              "p95": 3.673,
+              "p99": 3.967,
+              "samples": 1020
+            },
+            "commands_ms": {
+              "max": 3.225,
+              "mean": 1.72758039215686,
+              "p95": 1.984,
+              "p99": 2.241,
+              "samples": 1020
+            },
+            "formation_ms": {
+              "max": 0.955,
+              "mean": 0.492072549019608,
+              "p95": 0.7,
+              "p99": 0.844,
+              "samples": 1020
+            },
+            "fronts_ms": {
+              "max": 0.505,
+              "mean": 0.237979411764707,
+              "p95": 0.293,
+              "p99": 0.409,
+              "samples": 1020
+            },
+            "terrain_ms": {
+              "max": 1.84,
+              "mean": 0.927468627450979,
+              "p95": 1.137,
+              "p99": 1.26,
+              "samples": 1020
+            },
+            "territory_ms": {
+              "max": 0.294,
+              "mean": 0.0158107843137254,
+              "p95": 0.23,
+              "p99": 0.236,
+              "samples": 1020
+            },
+            "unit_telemetry_ms": {
+              "max": 1.974,
+              "mean": 1.26824509803922,
+              "p95": 1.44,
+              "p99": 1.532,
+              "samples": 1020
+            },
+            "units_ms": {
+              "max": 15.635,
+              "mean": 8.79118333333334,
+              "p95": 10.029,
+              "p99": 10.881,
+              "samples": 1020
+            }
+          }
+        }
+      ],
+      "engine": "4.7.2-stable (steam)",
+      "instrumented": true,
+      "mode": "cpu_headless",
+      "notes": "Actual physics-frame wall intervals; engine monitors can update late. Nested timers overlap and must not be summed. Timers and observation add measurement overhead. Not a deterministic timing guarantee.",
+      "raw_sha256": "3c6f20daf0ffb3c9beda45b17704ef0e75a89bdd29080903b739b941a0ac41b9"
+    },
+    "rendered_before": {
+      "build": "0.5.1-army-flow",
+      "cases": [
+        {
+          "case": "open_control",
+          "defensive_slots": 48,
+          "initial_living": 192,
+          "maxima": {
+            "moving": 144,
+            "stalled": 30,
+            "traversing": 91
+          },
+          "recovery": {
+            "cancelled": 2,
+            "cells": 106412,
+            "max_cells_per_tick": 128,
+            "max_queue": 8,
+            "max_slice_us": 2001,
+            "no_path": 9,
+            "paths": 35,
+            "requests": 46
+          },
+          "simulation_seconds": 19.9833333333335,
+          "ticks": 1200,
+          "timings": {
+            "engine_physics_ms": {
+              "max": 30.306,
+              "mean": 19.4501245098041,
+              "p95": 30.306,
+              "p99": 30.306,
+              "samples": 1020
+            },
+            "engine_process_ms": {
+              "max": 8.795,
+              "mean": 5.53619901960785,
+              "p95": 8.795,
+              "p99": 8.795,
+              "samples": 1020
+            },
+            "living": {
+              "max": 192,
+              "mean": 192.0,
+              "p95": 192,
+              "p99": 192,
+              "samples": 1020
+            },
+            "moving": {
+              "max": 144,
+              "mean": 138.582352941176,
+              "p95": 144,
+              "p99": 144,
+              "samples": 1020
+            },
+            "physics_interval_ms": {
+              "max": 33.157,
+              "mean": 16.839312745098,
+              "p95": 20.949,
+              "p99": 23.791,
+              "samples": 1020
+            },
+            "stalled": {
+              "max": 30,
+              "mean": 10.4941176470588,
+              "p95": 22,
+              "p99": 27,
+              "samples": 1020
+            },
+            "traversing": {
+              "max": 91,
+              "mean": 59.2911764705882,
+              "p95": 89,
+              "p99": 91,
+              "samples": 1020
+            },
+            "wall_frame_ms": {
+              "max": 190.134,
+              "mean": 48.1658151260503,
+              "p95": 136.499,
+              "p99": 154.979,
+              "samples": 357
+            }
+          }
+        },
+        {
+          "case": "friendly_crossing",
+          "defensive_slots": 48,
+          "initial_living": 192,
+          "maxima": {
+            "moving": 144,
+            "stalled": 61,
+            "traversing": 38
+          },
+          "recovery": {
+            "cancelled": 12,
+            "cells": 128180,
+            "max_cells_per_tick": 128,
+            "max_queue": 32,
+            "max_slice_us": 1294,
+            "no_path": 28,
+            "paths": 24,
+            "requests": 97
+          },
+          "simulation_seconds": 20.0000000000001,
+          "ticks": 1200,
+          "timings": {
+            "engine_physics_ms": {
+              "max": 27.314,
+              "mean": 19.0582235294118,
+              "p95": 27.314,
+              "p99": 27.314,
+              "samples": 1020
+            },
+            "engine_process_ms": {
+              "max": 7.28,
+              "mean": 5.45826274509803,
+              "p95": 7.28,
+              "p99": 7.28,
+              "samples": 1020
+            },
+            "living": {
+              "max": 192,
+              "mean": 192.0,
+              "p95": 192,
+              "p99": 192,
+              "samples": 1020
+            },
+            "moving": {
+              "max": 144,
+              "mean": 118.136274509804,
+              "p95": 135,
+              "p99": 139,
+              "samples": 1020
+            },
+            "physics_interval_ms": {
+              "max": 34.627,
+              "mean": 17.0495607843137,
+              "p95": 21.609,
+              "p99": 24.588,
+              "samples": 1020
+            },
+            "stalled": {
+              "max": 61,
+              "mean": 36.4117647058824,
+              "p95": 55,
+              "p99": 60,
+              "samples": 1020
+            },
+            "traversing": {
+              "max": 38,
+              "mean": 22.271568627451,
+              "p95": 35,
+              "p99": 36,
+              "samples": 1020
+            },
+            "wall_frame_ms": {
+              "max": 171.414,
+              "mean": 95.1681538461539,
+              "p95": 146.802,
+              "p99": 171.036,
+              "samples": 182
+            }
+          }
+        }
+      ],
+      "engine": "4.7.2-stable (steam)",
+      "instrumented": false,
+      "mode": "rendered_120_fps_cap",
+      "notes": "Actual physics-frame wall intervals; engine monitors can update late. Nested timers overlap and must not be summed. Timers and observation add measurement overhead. Not a deterministic timing guarantee.",
+      "raw_sha256": "3f31abb213467c1d4b3f475543d6d5fa6e4039f1c68da48e9bc613c971661d0a"
+    },
+    "rendered_after_lookup": {
+      "build": "0.5.1-army-flow",
+      "cases": [
+        {
+          "case": "open_control",
+          "defensive_slots": 48,
+          "initial_living": 192,
+          "maxima": {
+            "moving": 144,
+            "stalled": 30,
+            "traversing": 91
+          },
+          "recovery": {
+            "cancelled": 2,
+            "cells": 106412,
+            "max_cells_per_tick": 128,
+            "max_queue": 8,
+            "max_slice_us": 1062,
+            "no_path": 9,
+            "paths": 35,
+            "requests": 46
+          },
+          "simulation_seconds": 19.9833333333335,
+          "ticks": 1200,
+          "timings": {
+            "engine_physics_ms": {
+              "max": 15.245,
+              "mean": 13.7867215686274,
+              "p95": 15.112,
+              "p99": 15.245,
+              "samples": 1020
+            },
+            "engine_process_ms": {
+              "max": 6.089,
+              "mean": 4.89509117647059,
+              "p95": 5.998,
+              "p99": 6.089,
+              "samples": 1020
+            },
+            "living": {
+              "max": 192,
+              "mean": 192.0,
+              "p95": 192,
+              "p99": 192,
+              "samples": 1020
+            },
+            "moving": {
+              "max": 144,
+              "mean": 138.582352941176,
+              "p95": 144,
+              "p99": 144,
+              "samples": 1020
+            },
+            "physics_interval_ms": {
+              "max": 21.559,
+              "mean": 16.6586372549019,
+              "p95": 18.996,
+              "p99": 20.251,
+              "samples": 1020
+            },
+            "stalled": {
+              "max": 30,
+              "mean": 10.4941176470588,
+              "p95": 22,
+              "p99": 27,
+              "samples": 1020
+            },
+            "traversing": {
+              "max": 91,
+              "mean": 59.2911764705882,
+              "p95": 89,
+              "p99": 91,
+              "samples": 1020
+            },
+            "wall_frame_ms": {
+              "max": 33.48,
+              "mean": 15.3495962059621,
+              "p95": 29.14,
+              "p99": 31.787,
+              "samples": 1107
+            }
+          }
+        },
+        {
+          "case": "friendly_crossing",
+          "defensive_slots": 48,
+          "initial_living": 192,
+          "maxima": {
+            "moving": 144,
+            "stalled": 61,
+            "traversing": 38
+          },
+          "recovery": {
+            "cancelled": 12,
+            "cells": 128180,
+            "max_cells_per_tick": 128,
+            "max_queue": 32,
+            "max_slice_us": 1317,
+            "no_path": 28,
+            "paths": 24,
+            "requests": 97
+          },
+          "simulation_seconds": 20.0000000000001,
+          "ticks": 1200,
+          "timings": {
+            "engine_physics_ms": {
+              "max": 15.625,
+              "mean": 14.1447833333334,
+              "p95": 15.625,
+              "p99": 15.625,
+              "samples": 1020
+            },
+            "engine_process_ms": {
+              "max": 7.524,
+              "mean": 6.19081470588232,
+              "p95": 7.524,
+              "p99": 7.524,
+              "samples": 1020
+            },
+            "living": {
+              "max": 192,
+              "mean": 192.0,
+              "p95": 192,
+              "p99": 192,
+              "samples": 1020
+            },
+            "moving": {
+              "max": 144,
+              "mean": 118.136274509804,
+              "p95": 135,
+              "p99": 139,
+              "samples": 1020
+            },
+            "physics_interval_ms": {
+              "max": 22.722,
+              "mean": 16.6502921568627,
+              "p95": 19.353,
+              "p99": 20.361,
+              "samples": 1020
+            },
+            "stalled": {
+              "max": 61,
+              "mean": 36.4117647058824,
+              "p95": 55,
+              "p99": 60,
+              "samples": 1020
+            },
+            "traversing": {
+              "max": 38,
+              "mean": 22.271568627451,
+              "p95": 35,
+              "p99": 36,
+              "samples": 1020
+            },
+            "wall_frame_ms": {
+              "max": 34.946,
+              "mean": 18.8935461624027,
+              "p95": 32.63,
+              "p99": 34.289,
+              "samples": 899
+            }
+          }
+        }
+      ],
+      "engine": "4.7.2-stable (steam)",
+      "instrumented": false,
+      "mode": "rendered_120_fps_cap",
+      "notes": "Actual physics-frame wall intervals; engine monitors can update late. Nested timers overlap and must not be summed. Timers and observation add measurement overhead. Not a deterministic timing guarantee.",
+      "raw_sha256": "1a08d10570dbf9ece82fd0d7c5b3213fbd913812de489732960031c372b04376"
+    },
+    "rendered_final_repeat": {
+      "build": "0.5.2-consolidation",
+      "cases": [
+        {
+          "case": "open_control",
+          "defensive_slots": 48,
+          "initial_living": 192,
+          "maxima": {
+            "moving": 144,
+            "stalled": 30,
+            "traversing": 91
+          },
+          "recovery": {
+            "cancelled": 2,
+            "cells": 106412,
+            "max_cells_per_tick": 128,
+            "max_queue": 8,
+            "max_slice_us": 942,
+            "no_path": 9,
+            "paths": 35,
+            "requests": 46
+          },
+          "simulation_seconds": 19.9833333333335,
+          "ticks": 1200,
+          "timings": {
+            "engine_physics_ms": {
+              "max": 15.855,
+              "mean": 14.3547843137255,
+              "p95": 15.636,
+              "p99": 15.855,
+              "samples": 1020
+            },
+            "engine_process_ms": {
+              "max": 4.545,
+              "mean": 4.02440098039215,
+              "p95": 4.545,
+              "p99": 4.545,
+              "samples": 1020
+            },
+            "living": {
+              "max": 192,
+              "mean": 192.0,
+              "p95": 192,
+              "p99": 192,
+              "samples": 1020
+            },
+            "moving": {
+              "max": 144,
+              "mean": 138.582352941176,
+              "p95": 144,
+              "p99": 144,
+              "samples": 1020
+            },
+            "physics_interval_ms": {
+              "max": 20.706,
+              "mean": 16.6661911764706,
+              "p95": 18.434,
+              "p99": 19.708,
+              "samples": 1020
+            },
+            "stalled": {
+              "max": 30,
+              "mean": 10.4941176470588,
+              "p95": 22,
+              "p99": 27,
+              "samples": 1020
+            },
+            "traversing": {
+              "max": 91,
+              "mean": 59.2911764705882,
+              "p95": 89,
+              "p99": 91,
+              "samples": 1020
+            },
+            "wall_frame_ms": {
+              "max": 32.942,
+              "mean": 15.4655883424408,
+              "p95": 30.353,
+              "p99": 31.76,
+              "samples": 1098
+            }
+          }
+        },
+        {
+          "case": "friendly_crossing",
+          "defensive_slots": 48,
+          "initial_living": 192,
+          "maxima": {
+            "moving": 144,
+            "stalled": 61,
+            "traversing": 38
+          },
+          "recovery": {
+            "cancelled": 12,
+            "cells": 128180,
+            "max_cells_per_tick": 128,
+            "max_queue": 32,
+            "max_slice_us": 971,
+            "no_path": 28,
+            "paths": 24,
+            "requests": 97
+          },
+          "simulation_seconds": 20.0000000000001,
+          "ticks": 1200,
+          "timings": {
+            "engine_physics_ms": {
+              "max": 16.363,
+              "mean": 14.7478254901961,
+              "p95": 16.363,
+              "p99": 16.363,
+              "samples": 1020
+            },
+            "engine_process_ms": {
+              "max": 5.045,
+              "mean": 4.02090588235291,
+              "p95": 4.311,
+              "p99": 5.045,
+              "samples": 1020
+            },
+            "living": {
+              "max": 192,
+              "mean": 192.0,
+              "p95": 192,
+              "p99": 192,
+              "samples": 1020
+            },
+            "moving": {
+              "max": 144,
+              "mean": 118.136274509804,
+              "p95": 135,
+              "p99": 139,
+              "samples": 1020
+            },
+            "physics_interval_ms": {
+              "max": 20.723,
+              "mean": 16.6477892156863,
+              "p95": 18.287,
+              "p99": 19.457,
+              "samples": 1020
+            },
+            "stalled": {
+              "max": 61,
+              "mean": 36.4117647058824,
+              "p95": 55,
+              "p99": 60,
+              "samples": 1020
+            },
+            "traversing": {
+              "max": 38,
+              "mean": 22.271568627451,
+              "p95": 35,
+              "p99": 36,
+              "samples": 1020
+            },
+            "wall_frame_ms": {
+              "max": 34.401,
+              "mean": 17.4871907216495,
+              "p95": 30.781,
+              "p99": 32.778,
+              "samples": 970
+            }
+          }
+        }
+      ],
+      "engine": "4.7.2-stable (steam)",
+      "instrumented": false,
+      "mode": "rendered_120_fps_cap",
+      "notes": "Actual physics-frame wall intervals; engine monitors can update late. Nested timers overlap and must not be summed. Timers and observation add measurement overhead. Not a deterministic timing guarantee.",
+      "raw_sha256": "3ef2572050ce8f4aaa6925ca42c05eda00ce51d12b4242915364c5c68c27397c"
+    }
+  }
+}

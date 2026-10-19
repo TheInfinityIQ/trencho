@@ -46,6 +46,7 @@ var is_attacking := false
 var combat_closing := false
 var closing_target_id := 0
 var fired_this_tick := false
+var fire_called_this_tick := false
 var target: Unit
 var assigned_formation_slot := Vector2.ZERO
 var reservation_id := -1
@@ -130,8 +131,13 @@ func is_alive() -> bool:
 func _physics_process(delta: float) -> void:
 	if not is_instance_valid(battle) or not battle.battle_active or not is_alive(): return
 	fired_this_tick = false
+	fire_called_this_tick = false
+	var begin := Time.get_ticks_usec() if battle.profile_enabled else 0
 	_simulate(delta)
+	if battle.profile_enabled: battle.profile_add("units_us",Time.get_ticks_usec()-begin)
+	begin = Time.get_ticks_usec() if battle.profile_enabled else 0
 	battle.telemetry.observe_unit(self,delta)
+	if battle.profile_enabled: battle.profile_add("unit_telemetry_us",Time.get_ticks_usec()-begin)
 
 func _simulate(delta: float) -> void:
 	combat_closing = false
@@ -268,6 +274,7 @@ func _defense_pursuit_allowed(enemy: Unit) -> bool:
 	return squad == null or squad.intent != "DEFEND" or not defense_established or battle.squad_commands.inside_defense(squad,enemy.global_position)
 
 func _fire_at_target() -> void:
+	fire_called_this_tick = true
 	state = State.ENGAGING
 	is_attacking = true
 	velocity = Vector2.ZERO
@@ -509,3 +516,18 @@ func _retreat_tick(delta: float) -> void:
 		squad.retreating = false
 		battle.telemetry.rout_ended(squad)
 		for member in squad.living_members(): member.state = State.ADVANCING
+
+
+# On-demand developer evidence; this does no target search in ordinary play.
+func engagement_snapshot() -> Dictionary:
+	var candidates: Array = []
+	for body in $RangedArea2D.get_overlapping_bodies():
+		if body is Unit and body.team_id != team_id and body.is_alive(): candidates.append({"unit_id":body.telemetry_id,"distance":position.distance_to(body.position)})
+	var detected := nearest_enemy()
+	var reason := "COOLDOWN" if attack_remaining > 0 else "READY"
+	if detected == null: reason = "NO_LIVING_ENEMY_IN_DETECTION"
+	if fired_this_tick: reason = "FIRED"
+	elif not battle.battle_active: reason = "BATTLE_ENDED"
+	elif squad != null and squad.retreating: reason = "RETREATING"
+	elif state == State.CAPTURING: reason = "CAPTURING"
+	return {"unit_id":telemetry_id,"point_id":squad.order_id if squad != null else -1,"squad_id":squad.squad_id if squad != null else -1,"state":State.keys()[state],"defense_established":defense_established,"intent":squad.intent if squad != null else "NONE","role":squad.defense_roles.get(squad_member_index,"NONE") if squad != null else "NONE","ranged_candidates":candidates,"detection_target":detected.telemetry_id if detected != null else 0,"chosen_target":target.telemetry_id if is_instance_valid(target) else 0,"target_distance":position.distance_to(target.position) if is_instance_valid(target) else null,"attack_range":attack_range,"melee_range":melee_range,"cooldown":attack_remaining,"fire_called":fire_called_this_tick,"fired":fired_this_tick,"reason":reason,"collision_layer":collision_layer,"ranged_mask":$RangedArea2D.collision_mask,"melee_mask":$MeleeArea2D.collision_mask}

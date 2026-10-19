@@ -1,11 +1,11 @@
 # Trencho mechanics prototype
 
-Current interaction contract: [Drawn Commands v0.2](DRAWN_COMMAND_V02_IMPLEMENTATION.md). The sections below record the v0.1 baseline; the linked v0.2 document supersedes one-Unit, straight-line and fixed-circle assumptions. This supersedes the old player deployment-zone/exclusion and battlefield rectangle interaction. Formation, collision, economy and scoring still use shared systems for both teams.
+Current interaction contract: [Consolidation pass 0.5.2](CONSOLIDATION_IDENTITY.md), which supersedes facing, reinforcement targeting and blueprint defaults from [Drawn Commands v0.2](DRAWN_COMMAND_V02_IMPLEMENTATION.md). The sections below record the v0.1 baseline; the linked v0.2 document supersedes one-Unit, straight-line and fixed-circle assumptions. This supersedes the old player deployment-zone/exclusion and battlefield rectangle interaction. Formation, collision, economy and scoring still use shared systems for both teams.
 
 ## Playing
 
 - Select one Unit and up to two compatible Modifiers, in either order. Click the battlefield to open a temporary **Squad Blueprint**. The clicked horizontal position sets entry frontage; its vertical position is not a movement destination.
-- Resize the initial formation using its corner or edge handles only. The preview shows quantity, cost and capacity. An undersized formation cannot proceed.
+- Accept the usable default formation or optionally resize using corner/edge handles. The preview shows quantity, cost and capacity. An undersized manual formation cannot proceed.
 - Choose **Use formation → draw an order**. Nothing is spent yet. Drag the single white order knob: a line means **Advance**, a loop means **Defend**. A short stem from the knob to the loop is supported. There is no gesture accuracy bonus.
 - A valid initial command spends Command once, discards/refills the selected cards, creates a distinct squad with an intent, and queues off-screen reinforcements. Failed/cancelled setup or commands spend nothing.
 - New squads are not limited to the old deployment rectangles. Enemy proximity or occupancy in the blueprint's world projection does not veto deployment. Real bodies/terrain at an off-screen entrance can delay individual soldiers safely; queued soldiers retry rather than disappear.
@@ -74,3 +74,12 @@ Defenders normally use a fixed set of local steering probes. A single shared rec
 Blueprint geometry is edited exclusively through the box's corners/edges. Its preview scale and opposite anchor remain fixed during a gesture, so diagonal motion tracks the pointer. Width/depth limits clamp independently; releasing outside the panel still ends the captured resize. No sliders or scrollbars remain.
 
 See [measured results and regression coverage](DEFENSE_PERFORMANCE_AND_BLUEPRINT.md). This intentionally trades global maze-solving for predictable, bounded local movement cost.
+
+## Consolidation interaction changes (0.5.2)
+
+Defend always faces the opposing deployment side. An open route reinforces only
+when it ends on a friendly shield, including an inbound point. Its recent approach
+chooses broad left/center/right placement. Routes ending elsewhere in friendly
+territory remain Advance. The live preview names the command, preferred sector,
+and FRONTAGE/RESERVE result. Each package opens with a functional automatic
+blueprint; manual sizing remains optional. See [evidence and limitations](CONSOLIDATION_IDENTITY.md).

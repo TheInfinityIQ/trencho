@@ -6,7 +6,7 @@ Single-player PC mechanics prototype combining card deployments with autonomous 
 
 Use **Godot 4.7.2 stable**, standard edition (no .NET dependency). The verification version is recorded in `.godot-version`. Steam's `stable-4.7` branch can receive patch updates; update the version file only after running compatibility checks with the new patch.
 
-The current interaction is a three-card package (one or two Units) → squad blueprint → a curved route, full Defend loop or route into a friendly Defensive Area from one order knob. See [v0.2 controls and systems](docs/DRAWN_COMMAND_V02_IMPLEMENTATION.md). Click soldiers to select whole squads; Shift modifies multi-selection.
+The current interaction is a three-card package (one or two Units) → squad blueprint → a curved route, full Defend loop or route ending on a friendly Defensive Point shield from one order knob. See [v0.2 controls and systems](docs/DRAWN_COMMAND_V02_IMPLEMENTATION.md). Click soldiers to select whole squads; Shift modifies multi-selection.
 
 Import `project.godot` in Godot and run `main.tscn`. See [prototype controls, rules and tuning](docs/PROTOTYPE.md).
 
@@ -43,3 +43,20 @@ The runner checks the exact stable engine version, imports resources, runs the s
 Legacy scenes/scripts remain until their references can be retired in a separate focused change. Engine recovery files (`*.tmp`), imported caches and local verification results are excluded from Git.
 
 Automated checks verify covered behavior. Visual readability, congestion, balance and enjoyment still require a comparable gameplay test before changing combat stats or card costs.
+
+## Consolidation build
+
+The current version is **0.5.2-consolidation**. Defend faces the enemy automatically;
+Reinforce requires ending on a friendly shield. The approach chooses a broad sector.
+Every legal package starts with a usable blueprint; manual editing remains optional.
+See [implementation and evidence](docs/CONSOLIDATION_IDENTITY.md).
+
+With the matching Godot Windows export templates installed:
+
+```powershell
+./tools/build_windows.ps1
+```
+
+This creates an ordinary playable EXE/PCK and ZIP under
+`.test-results/builds/Trencho-0.5.2-consolidation/`, plus a source/artifact manifest.
+Open `Trencho.exe` and choose **Play**. Developer profiling and tests are optional.

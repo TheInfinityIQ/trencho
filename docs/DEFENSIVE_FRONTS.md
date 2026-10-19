@@ -5,8 +5,8 @@ Implemented against Godot 4.7.2 and the supplied Defensive Front System brief.
 ## Player behavior
 
 A Defend order creates an oriented front from persistent squad formation blocks.
-A terminal route supplies the last meaningful travel heading; an order without
-one faces the enemy side. The AI supplies facing directly. Squads retain member
+Player fronts face the enemy side automatically; terminal route geometry never
+rotates them. The AI supplies facing directly. Squads retain member
 identity, formation files/ranks, relative shape, original blueprint width/depth,
 card ordering, and original consolidation capacity. They never become a global
 pool of defenders.
@@ -24,10 +24,14 @@ the first block establishes the front and subsequent blocks form depth. The
 new front never packs survivors into a generic square. Each block keeps its
 original casualty holes when it is relocated.
 
-An open route ending inside an active friendly point reinforces that point.
-The endpoint projects onto its lateral axis. A genuine opening that fits the
+An open route reinforces only when its endpoint targets the friendly shield
+(14 screen pixels, converted through camera zoom; visible inbound anchors count).
+Ending elsewhere inside owned territory remains Advance. The recent approach
+before the shield projects onto the front lateral axis to select broad left,
+center or right placement; short/ambiguous approaches default center. The
+preference is clamped to the current frontage extent. A genuine opening that fits the
 whole arriving block is preferred. Occupied central sectors gain reserve depth;
-endpoints within about 0.6 defensive spacings of an exposed edge extend frontage.
+flank preferences near an exposed edge extend frontage.
 Existing blocks keep their homes. A complete block must fit the battlefield,
 No-Hold limits, terrain, and other positions. An invalid footprint rejects the
 command without spending Command or queuing soldiers. The UI previews the
@@ -142,3 +146,5 @@ Observed validation on 2026-10-18 with Godot 4.7.2:
 
 These are automated/editor-runtime checks, not an exported-build certification
 or a claim that the prototype's balance has been proven.
+
+Current consolidation evidence, limitations and build instructions: [Consolidation pass](CONSOLIDATION_IDENTITY.md).

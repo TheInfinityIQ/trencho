@@ -78,6 +78,7 @@ func _init(owner_battle: Node) -> void:
 		doctrine_summary[key] = {"time_first_point_established":null,"peak_defenders":0,"time_below_target":0.0}
 	data.ai.defensive_doctrine = doctrine_summary
 	data.ai.doctrines = {"1":battle.enemy_controller.doctrine,"2":battle.player_controller.doctrine if battle.player_controller != null else "HUMAN"}
+	battle.squad_commands.command_resolved.connect(_command_result)
 
 func plain(value):
 	if value is Vector2 or value is Vector2i: return [value.x,value.y]
@@ -543,6 +544,15 @@ func tick(delta: float) -> void:
 		point_records[id].established_soldier_seconds += point.established*interval
 		var sample := {"timestamp":clock}
 		for key in ["lifecycle","anchors","established","inbound","desired_area","actual_area","capacity_state","pressure","neighbors","squads"]: sample[key] = plain(point[key])
+		var fronts = battle.squad_commands.fronts
+		sample.wave_remaining = point.get("wave_remaining",-1.0)
+		sample.frontline_vacancies = fronts.vacant_front(point).size()
+		sample.reserves_available = fronts.reserves(point).size()
+		sample.frontline_arrived = 0
+		for block in fronts.blocks(point):
+			for slot in block.slots:
+				var member: Unit = fronts.occupant(slot)
+				if slot.front and member != null and member.position.distance_to(slot.home)<=10: sample.frontline_arrived += 1
 		point_records[id].samples.append(sample)
 	for id in point_records:
 		if not battle.squad_commands.orders.has(id) and point_records[id].deleted_time == null:
@@ -646,3 +656,13 @@ func save() -> bool:
 
 func summary_text() -> String:
 	return "MATCH %s\nDuration %.2fs\nScore: Player %d / Enemy %d\n%s" % [data.match.match_id,clock,battle.scores[2],battle.scores[1],JSON.stringify(data.summary,"  ")]
+
+
+func inspect_engagement(unit: Unit) -> Dictionary:
+	var snapshot := unit.engagement_snapshot()
+	event("ENGAGEMENT_DIAGNOSTIC",snapshot)
+	return snapshot
+
+
+func _command_result(result: Dictionary) -> void:
+	event("COMMAND_RESULT",{"team":result.get("team",2),"success":result.success,"final_command":"REINFORCE" if result.get("reinforcement",false) else result.command_type,"point_id":result.defensive_point_id,"failure_reason":result.failure_reason,"squad_ids":result.affected_squad_ids})

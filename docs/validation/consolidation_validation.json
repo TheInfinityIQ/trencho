@@ -1,0 +1,1535 @@
+{
+  "full_fresh_import": {
+    "passed": true,
+    "engine": "4.7.2.stable.steam.ed1daf0bf",
+    "suites": [
+      {
+        "suite": "ai_flow",
+        "completion": [
+          "AI FLOW: 31 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "battle_soak",
+        "completion": [
+          "BATTLE SOAK: deployments={ 1: 13, 2: 38 } deaths=282 goals=100 peak_units=161 score={ 1: 0, 2: 100 } active=false"
+        ]
+      },
+      {
+        "suite": "blueprint_drag",
+        "completion": [
+          "BLUEPRINT DRAG: 24 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "camera",
+        "completion": [
+          "CAMERA CHECKS PASSED: 19 assertions"
+        ]
+      },
+      {
+        "suite": "combat_input",
+        "completion": [
+          "COMBAT / INPUT CHECKS: 29 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "combat_readability_capture",
+        "completion": [
+          "COMBAT READABILITY CAPTURE: 150 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "combat_telemetry",
+        "completion": [
+          "COMBAT TELEMETRY: 101 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "consolidation_combat",
+        "completion": [
+          "CONSOLIDATION COMBAT: 154 assertions, PASSED; C:/Users/dawso/AppData/Roaming/Godot/app_userdata/Trencho/consolidation_combat_evidence.json"
+        ]
+      },
+      {
+        "suite": "consolidation_commands",
+        "completion": [
+          "CONSOLIDATION COMMANDS: 221 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "defense_regression",
+        "completion": [
+          "DEFENSE REGRESSION: 27 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "defense_scale",
+        "completion": [
+          "DEFENSE SCALE: 324 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "defensive_combat",
+        "completion": [
+          "DEFENSIVE COMBAT: 78 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "defensive_front",
+        "completion": [
+          "DEFENSIVE FRONT: 83 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "drawn_command_v02",
+        "completion": [
+          "DRAWN COMMAND V02: 202 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "formation",
+        "completion": [
+          "FORMATION CHECKS PASSED: 264 assertions"
+        ]
+      },
+      {
+        "suite": "mirror_mode",
+        "completion": [
+          "MIRROR MODE: 28 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "movement_recovery",
+        "completion": [
+          "MOVEMENT RECOVERY: 8 assertions, PASSED; max_slice_us=919"
+        ]
+      },
+      {
+        "suite": "next_pass",
+        "completion": [
+          "NEXT PASS: 33 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "pathing_trials",
+        "completion": [
+          "PATHING TRIALS: 26 trials, PASSED; C:/Users/dawso/AppData/Roaming/Godot/app_userdata/Trencho/pathing_tests/verification_2026-10-19T000808_131868.json"
+        ]
+      },
+      {
+        "suite": "reinforcement_flow",
+        "completion": [
+          "REINFORCEMENT FLOW: 193 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "retired_box",
+        "completion": [
+          "RETIRED BOX: 5 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "simulation_clock-144",
+        "completion": [
+          "SIMULATION CLOCK: 10 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "simulation_clock-30",
+        "completion": [
+          "SIMULATION CLOCK: 10 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "squad_command",
+        "completion": [
+          "SQUAD COMMANDS: 72 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "squad_movement",
+        "completion": [
+          "SQUAD MOVEMENT: 38 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "territory_performance",
+        "completion": [
+          "TERRITORY PERFORMANCE: 27 assertions, PASSED"
+        ]
+      },
+      {
+        "suite": "ui_clarity",
+        "completion": [
+          "UI CLARITY: 37 assertions, PASSED"
+        ]
+      }
+    ],
+    "clock_snapshot_comparison": "30/144 FPS identical",
+    "startup_smoke": "passed"
+  },
+  "final_focused": {
+    "consolidation_commands_assertions": 221,
+    "consolidation_combat_assertions": 238,
+    "ui_clarity_assertions": 37,
+    "startup_smoke": "passed"
+  },
+  "separate_seeded_pathing": {
+    "completed": true,
+    "current_case": "sealed_destination",
+    "engine": "4.7.2-stable (steam)",
+    "note": "Arrival requires all expected soldiers. Queued, missing, dead or unspawned members cannot make a trial pass. Blocked-destination trials explicitly expect non-arrival. Combat is disabled to isolate movement.",
+    "passed": true,
+    "physics_hz": 60,
+    "real_seconds": 130.494,
+    "results": [
+      {
+        "case": "open_advance",
+        "expected_members": 12,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 0,
+          "max_cells_per_tick": 0,
+          "max_queue": 0,
+          "max_slice_us": 0,
+          "no_path": 0,
+          "paths": 0,
+          "requests": 0
+        },
+        "seed": 16102026,
+        "simulation_seconds": 3.0,
+        "stages": [
+          {
+            "arrived": 12,
+            "expected": 12,
+            "passed": true,
+            "stage": "unobstructed_advance",
+            "ticks": 180
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "queued_direct",
+        "expected_members": 48,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 0,
+          "max_cells_per_tick": 0,
+          "max_queue": 0,
+          "max_slice_us": 0,
+          "no_path": 0,
+          "paths": 0,
+          "requests": 0
+        },
+        "seed": 16102026,
+        "simulation_seconds": 14.6333333333333,
+        "stages": [
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "queued_arrival",
+            "ticks": 878
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "queued_route_loop",
+        "expected_members": 48,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 19208,
+          "max_cells_per_tick": 128,
+          "max_queue": 1,
+          "max_slice_us": 939,
+          "no_path": 0,
+          "paths": 8,
+          "requests": 8
+        },
+        "seed": 16102026,
+        "simulation_seconds": 28.6,
+        "stages": [
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "queued_arrival",
+            "ticks": 1716
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "stationary_rank",
+        "expected_members": 12,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 26411,
+          "max_cells_per_tick": 128,
+          "max_queue": 2,
+          "max_slice_us": 982,
+          "no_path": 0,
+          "paths": 11,
+          "requests": 11
+        },
+        "seed": 16102026,
+        "simulation_seconds": 26.2333333333333,
+        "stages": [
+          {
+            "arrived": 12,
+            "expected": 12,
+            "passed": true,
+            "stage": "pass_obstruction",
+            "ticks": 1574
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "whole_point_release",
+        "expected_members": 48,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 1,
+          "cells": 59800,
+          "max_cells_per_tick": 128,
+          "max_queue": 1,
+          "max_slice_us": 1592,
+          "no_path": 3,
+          "paths": 21,
+          "requests": 25
+        },
+        "seed": 16102026,
+        "simulation_seconds": 50.8166666666667,
+        "stages": [
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "establish_origin",
+            "ticks": 1293
+          },
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "release_curved_route",
+            "ticks": 1756
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "whole_point_relocate",
+        "expected_members": 48,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 31213,
+          "max_cells_per_tick": 128,
+          "max_queue": 1,
+          "max_slice_us": 1339,
+          "no_path": 0,
+          "paths": 13,
+          "requests": 13
+        },
+        "seed": 16102026,
+        "simulation_seconds": 44.2333333333333,
+        "stages": [
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "establish_origin",
+            "ticks": 1293
+          },
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "relocate_route_loop",
+            "ticks": 1361
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "reinforce",
+        "expected_members": 36,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 24010,
+          "max_cells_per_tick": 128,
+          "max_queue": 2,
+          "max_slice_us": 1591,
+          "no_path": 0,
+          "paths": 10,
+          "requests": 10
+        },
+        "seed": 16102026,
+        "simulation_seconds": 27.1166666666667,
+        "stages": [
+          {
+            "arrived": 12,
+            "expected": 12,
+            "passed": true,
+            "stage": "establish_origin",
+            "ticks": 184
+          },
+          {
+            "arrived": 36,
+            "expected": 36,
+            "passed": true,
+            "stage": "reinforce_arrival",
+            "ticks": 1443
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "crossing_orders",
+        "expected_members": 48,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 1,
+          "cells": 37935,
+          "max_cells_per_tick": 128,
+          "max_queue": 2,
+          "max_slice_us": 1536,
+          "no_path": 3,
+          "paths": 12,
+          "requests": 16
+        },
+        "seed": 16102026,
+        "simulation_seconds": 29.7666666666667,
+        "stages": [
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "crossing_arrival",
+            "ticks": 1786
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "mid_entry_reorder",
+        "expected_members": 48,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 21609,
+          "max_cells_per_tick": 128,
+          "max_queue": 2,
+          "max_slice_us": 1420,
+          "no_path": 1,
+          "paths": 8,
+          "requests": 9
+        },
+        "seed": 16102026,
+        "simulation_seconds": 35.2166666666667,
+        "stages": [
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "mid_entry_redirect",
+            "ticks": 2023
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "edge_route",
+        "expected_members": 12,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 7203,
+          "max_cells_per_tick": 128,
+          "max_queue": 1,
+          "max_slice_us": 1200,
+          "no_path": 0,
+          "paths": 3,
+          "requests": 3
+        },
+        "seed": 16102026,
+        "simulation_seconds": 23.7666666666667,
+        "stages": [
+          {
+            "arrived": 12,
+            "expected": 12,
+            "passed": true,
+            "stage": "bounded_edge_route",
+            "ticks": 1426
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "terrain_detour",
+        "expected_members": 12,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 16807,
+          "max_cells_per_tick": 128,
+          "max_queue": 3,
+          "max_slice_us": 1059,
+          "no_path": 0,
+          "paths": 7,
+          "requests": 7
+        },
+        "seed": 16102026,
+        "simulation_seconds": 21.3333333333333,
+        "stages": [
+          {
+            "arrived": 12,
+            "expected": 12,
+            "passed": true,
+            "stage": "pass_obstruction",
+            "ticks": 1280
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "mass_route",
+        "expected_members": 72,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 1,
+          "cells": 79233,
+          "max_cells_per_tick": 128,
+          "max_queue": 3,
+          "max_slice_us": 2008,
+          "no_path": 7,
+          "paths": 26,
+          "requests": 34
+        },
+        "seed": 16102026,
+        "simulation_seconds": 47.1833333333333,
+        "stages": [
+          {
+            "arrived": 72,
+            "expected": 72,
+            "passed": true,
+            "stage": "mass_establish",
+            "ticks": 461
+          },
+          {
+            "arrived": 72,
+            "expected": 72,
+            "passed": true,
+            "stage": "mass_route_loop",
+            "ticks": 2370
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "sealed_destination",
+        "expected_members": 1,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 2401,
+          "max_cells_per_tick": 128,
+          "max_queue": 1,
+          "max_slice_us": 865,
+          "no_path": 0,
+          "paths": 1,
+          "requests": 1
+        },
+        "seed": 16102026,
+        "simulation_seconds": 12.0,
+        "stages": [
+          {
+            "arrived": 0,
+            "expected": 1,
+            "expected_blocked": true,
+            "passed": true,
+            "stage": "expected_blocked",
+            "ticks": 720
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "open_advance",
+        "expected_members": 12,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 0,
+          "max_cells_per_tick": 0,
+          "max_queue": 0,
+          "max_slice_us": 0,
+          "no_path": 0,
+          "paths": 0,
+          "requests": 0
+        },
+        "seed": 16102027,
+        "simulation_seconds": 3.0,
+        "stages": [
+          {
+            "arrived": 12,
+            "expected": 12,
+            "passed": true,
+            "stage": "unobstructed_advance",
+            "ticks": 180
+          }
+        ],
+        "team": 1
+      },
+      {
+        "case": "queued_direct",
+        "expected_members": 48,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 0,
+          "max_cells_per_tick": 0,
+          "max_queue": 0,
+          "max_slice_us": 0,
+          "no_path": 0,
+          "paths": 0,
+          "requests": 0
+        },
+        "seed": 16102027,
+        "simulation_seconds": 14.6333333333333,
+        "stages": [
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "queued_arrival",
+            "ticks": 878
+          }
+        ],
+        "team": 1
+      },
+      {
+        "case": "queued_route_loop",
+        "expected_members": 48,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 16807,
+          "max_cells_per_tick": 128,
+          "max_queue": 2,
+          "max_slice_us": 1107,
+          "no_path": 0,
+          "paths": 7,
+          "requests": 7
+        },
+        "seed": 16102027,
+        "simulation_seconds": 23.85,
+        "stages": [
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "queued_arrival",
+            "ticks": 1431
+          }
+        ],
+        "team": 1
+      },
+      {
+        "case": "stationary_rank",
+        "expected_members": 12,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 19208,
+          "max_cells_per_tick": 128,
+          "max_queue": 1,
+          "max_slice_us": 889,
+          "no_path": 0,
+          "paths": 8,
+          "requests": 8
+        },
+        "seed": 16102027,
+        "simulation_seconds": 27.9333333333333,
+        "stages": [
+          {
+            "arrived": 12,
+            "expected": 12,
+            "passed": true,
+            "stage": "pass_obstruction",
+            "ticks": 1676
+          }
+        ],
+        "team": 1
+      },
+      {
+        "case": "whole_point_release",
+        "expected_members": 48,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 62426,
+          "max_cells_per_tick": 128,
+          "max_queue": 2,
+          "max_slice_us": 1599,
+          "no_path": 1,
+          "paths": 25,
+          "requests": 26
+        },
+        "seed": 16102027,
+        "simulation_seconds": 65.45,
+        "stages": [
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "establish_origin",
+            "ticks": 1294
+          },
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "release_curved_route",
+            "ticks": 2633
+          }
+        ],
+        "team": 1
+      },
+      {
+        "case": "whole_point_relocate",
+        "expected_members": 48,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 31213,
+          "max_cells_per_tick": 128,
+          "max_queue": 1,
+          "max_slice_us": 1656,
+          "no_path": 0,
+          "paths": 13,
+          "requests": 13
+        },
+        "seed": 16102027,
+        "simulation_seconds": 45.4,
+        "stages": [
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "establish_origin",
+            "ticks": 1294
+          },
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "relocate_route_loop",
+            "ticks": 1430
+          }
+        ],
+        "team": 1
+      },
+      {
+        "case": "reinforce",
+        "expected_members": 36,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 43218,
+          "max_cells_per_tick": 128,
+          "max_queue": 3,
+          "max_slice_us": 1672,
+          "no_path": 0,
+          "paths": 18,
+          "requests": 18
+        },
+        "seed": 16102027,
+        "simulation_seconds": 46.6833333333333,
+        "stages": [
+          {
+            "arrived": 12,
+            "expected": 12,
+            "passed": true,
+            "stage": "establish_origin",
+            "ticks": 184
+          },
+          {
+            "arrived": 36,
+            "expected": 36,
+            "passed": true,
+            "stage": "reinforce_arrival",
+            "ticks": 2617
+          }
+        ],
+        "team": 1
+      },
+      {
+        "case": "crossing_orders",
+        "expected_members": 48,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 64827,
+          "max_cells_per_tick": 128,
+          "max_queue": 3,
+          "max_slice_us": 1719,
+          "no_path": 4,
+          "paths": 23,
+          "requests": 27
+        },
+        "seed": 16102027,
+        "simulation_seconds": 35.4,
+        "stages": [
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "crossing_arrival",
+            "ticks": 2124
+          }
+        ],
+        "team": 1
+      },
+      {
+        "case": "mid_entry_reorder",
+        "expected_members": 48,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 21609,
+          "max_cells_per_tick": 128,
+          "max_queue": 3,
+          "max_slice_us": 979,
+          "no_path": 1,
+          "paths": 8,
+          "requests": 9
+        },
+        "seed": 16102027,
+        "simulation_seconds": 27.85,
+        "stages": [
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "mid_entry_redirect",
+            "ticks": 1581
+          }
+        ],
+        "team": 1
+      },
+      {
+        "case": "edge_route",
+        "expected_members": 12,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 2401,
+          "max_cells_per_tick": 128,
+          "max_queue": 1,
+          "max_slice_us": 1063,
+          "no_path": 0,
+          "paths": 1,
+          "requests": 1
+        },
+        "seed": 16102027,
+        "simulation_seconds": 18.8666666666667,
+        "stages": [
+          {
+            "arrived": 12,
+            "expected": 12,
+            "passed": true,
+            "stage": "bounded_edge_route",
+            "ticks": 1132
+          }
+        ],
+        "team": 1
+      },
+      {
+        "case": "terrain_detour",
+        "expected_members": 12,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 14406,
+          "max_cells_per_tick": 128,
+          "max_queue": 1,
+          "max_slice_us": 1276,
+          "no_path": 0,
+          "paths": 6,
+          "requests": 6
+        },
+        "seed": 16102027,
+        "simulation_seconds": 21.8333333333333,
+        "stages": [
+          {
+            "arrived": 12,
+            "expected": 12,
+            "passed": true,
+            "stage": "pass_obstruction",
+            "ticks": 1310
+          }
+        ],
+        "team": 1
+      },
+      {
+        "case": "mass_route",
+        "expected_members": 72,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 74431,
+          "max_cells_per_tick": 128,
+          "max_queue": 2,
+          "max_slice_us": 1450,
+          "no_path": 5,
+          "paths": 26,
+          "requests": 31
+        },
+        "seed": 16102027,
+        "simulation_seconds": 54.2166666666667,
+        "stages": [
+          {
+            "arrived": 72,
+            "expected": 72,
+            "passed": true,
+            "stage": "mass_establish",
+            "ticks": 461
+          },
+          {
+            "arrived": 72,
+            "expected": 72,
+            "passed": true,
+            "stage": "mass_route_loop",
+            "ticks": 2792
+          }
+        ],
+        "team": 1
+      },
+      {
+        "case": "sealed_destination",
+        "expected_members": 1,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 2401,
+          "max_cells_per_tick": 128,
+          "max_queue": 1,
+          "max_slice_us": 1440,
+          "no_path": 0,
+          "paths": 1,
+          "requests": 1
+        },
+        "seed": 16102027,
+        "simulation_seconds": 12.0,
+        "stages": [
+          {
+            "arrived": 0,
+            "expected": 1,
+            "expected_blocked": true,
+            "passed": true,
+            "stage": "expected_blocked",
+            "ticks": 720
+          }
+        ],
+        "team": 1
+      },
+      {
+        "case": "open_advance",
+        "expected_members": 12,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 0,
+          "max_cells_per_tick": 0,
+          "max_queue": 0,
+          "max_slice_us": 0,
+          "no_path": 0,
+          "paths": 0,
+          "requests": 0
+        },
+        "seed": 16102028,
+        "simulation_seconds": 3.0,
+        "stages": [
+          {
+            "arrived": 12,
+            "expected": 12,
+            "passed": true,
+            "stage": "unobstructed_advance",
+            "ticks": 180
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "queued_direct",
+        "expected_members": 48,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 0,
+          "max_cells_per_tick": 0,
+          "max_queue": 0,
+          "max_slice_us": 0,
+          "no_path": 0,
+          "paths": 0,
+          "requests": 0
+        },
+        "seed": 16102028,
+        "simulation_seconds": 14.6333333333333,
+        "stages": [
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "queued_arrival",
+            "ticks": 878
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "queued_route_loop",
+        "expected_members": 48,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 9604,
+          "max_cells_per_tick": 128,
+          "max_queue": 1,
+          "max_slice_us": 1130,
+          "no_path": 0,
+          "paths": 4,
+          "requests": 4
+        },
+        "seed": 16102028,
+        "simulation_seconds": 30.5666666666667,
+        "stages": [
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "queued_arrival",
+            "ticks": 1834
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "stationary_rank",
+        "expected_members": 12,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 26411,
+          "max_cells_per_tick": 128,
+          "max_queue": 2,
+          "max_slice_us": 1056,
+          "no_path": 0,
+          "paths": 11,
+          "requests": 11
+        },
+        "seed": 16102028,
+        "simulation_seconds": 28.5,
+        "stages": [
+          {
+            "arrived": 12,
+            "expected": 12,
+            "passed": true,
+            "stage": "pass_obstruction",
+            "ticks": 1710
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "whole_point_release",
+        "expected_members": 48,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 64827,
+          "max_cells_per_tick": 128,
+          "max_queue": 2,
+          "max_slice_us": 1392,
+          "no_path": 1,
+          "paths": 26,
+          "requests": 27
+        },
+        "seed": 16102028,
+        "simulation_seconds": 51.9666666666667,
+        "stages": [
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "establish_origin",
+            "ticks": 863
+          },
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "release_curved_route",
+            "ticks": 2255
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "whole_point_relocate",
+        "expected_members": 48,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 26411,
+          "max_cells_per_tick": 128,
+          "max_queue": 1,
+          "max_slice_us": 1110,
+          "no_path": 0,
+          "paths": 11,
+          "requests": 11
+        },
+        "seed": 16102028,
+        "simulation_seconds": 41.1833333333333,
+        "stages": [
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "establish_origin",
+            "ticks": 863
+          },
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "relocate_route_loop",
+            "ticks": 1608
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "reinforce",
+        "expected_members": 36,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 21609,
+          "max_cells_per_tick": 128,
+          "max_queue": 2,
+          "max_slice_us": 914,
+          "no_path": 0,
+          "paths": 9,
+          "requests": 9
+        },
+        "seed": 16102028,
+        "simulation_seconds": 29.7166666666667,
+        "stages": [
+          {
+            "arrived": 12,
+            "expected": 12,
+            "passed": true,
+            "stage": "establish_origin",
+            "ticks": 184
+          },
+          {
+            "arrived": 36,
+            "expected": 36,
+            "passed": true,
+            "stage": "reinforce_arrival",
+            "ticks": 1599
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "crossing_orders",
+        "expected_members": 48,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 33614,
+          "max_cells_per_tick": 128,
+          "max_queue": 1,
+          "max_slice_us": 1343,
+          "no_path": 1,
+          "paths": 13,
+          "requests": 14
+        },
+        "seed": 16102028,
+        "simulation_seconds": 32.0666666666667,
+        "stages": [
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "crossing_arrival",
+            "ticks": 1924
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "mid_entry_reorder",
+        "expected_members": 48,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 21609,
+          "max_cells_per_tick": 128,
+          "max_queue": 2,
+          "max_slice_us": 1220,
+          "no_path": 0,
+          "paths": 9,
+          "requests": 9
+        },
+        "seed": 16102028,
+        "simulation_seconds": 36.4833333333333,
+        "stages": [
+          {
+            "arrived": 48,
+            "expected": 48,
+            "passed": true,
+            "stage": "mid_entry_redirect",
+            "ticks": 2099
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "edge_route",
+        "expected_members": 12,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 12005,
+          "max_cells_per_tick": 128,
+          "max_queue": 1,
+          "max_slice_us": 847,
+          "no_path": 1,
+          "paths": 4,
+          "requests": 5
+        },
+        "seed": 16102028,
+        "simulation_seconds": 20.9166666666667,
+        "stages": [
+          {
+            "arrived": 12,
+            "expected": 12,
+            "passed": true,
+            "stage": "bounded_edge_route",
+            "ticks": 1255
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "terrain_detour",
+        "expected_members": 12,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 21609,
+          "max_cells_per_tick": 128,
+          "max_queue": 3,
+          "max_slice_us": 1271,
+          "no_path": 0,
+          "paths": 9,
+          "requests": 9
+        },
+        "seed": 16102028,
+        "simulation_seconds": 22.6,
+        "stages": [
+          {
+            "arrived": 12,
+            "expected": 12,
+            "passed": true,
+            "stage": "pass_obstruction",
+            "ticks": 1356
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "mass_route",
+        "expected_members": 72,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 62426,
+          "max_cells_per_tick": 128,
+          "max_queue": 2,
+          "max_slice_us": 1817,
+          "no_path": 4,
+          "paths": 22,
+          "requests": 26
+        },
+        "seed": 16102028,
+        "simulation_seconds": 44.4833333333333,
+        "stages": [
+          {
+            "arrived": 72,
+            "expected": 72,
+            "passed": true,
+            "stage": "mass_establish",
+            "ticks": 461
+          },
+          {
+            "arrived": 72,
+            "expected": 72,
+            "passed": true,
+            "stage": "mass_route_loop",
+            "ticks": 2208
+          }
+        ],
+        "team": 2
+      },
+      {
+        "case": "sealed_destination",
+        "expected_members": 1,
+        "failures": [],
+        "invalid_motion_samples": 0,
+        "last_snapshots": [],
+        "overlap_events": [],
+        "overlap_samples": 0,
+        "passed": true,
+        "recovery": {
+          "cancelled": 0,
+          "cells": 2401,
+          "max_cells_per_tick": 128,
+          "max_queue": 1,
+          "max_slice_us": 850,
+          "no_path": 0,
+          "paths": 1,
+          "requests": 1
+        },
+        "seed": 16102028,
+        "simulation_seconds": 12.0,
+        "stages": [
+          {
+            "arrived": 0,
+            "expected": 1,
+            "expected_blocked": true,
+            "passed": true,
+            "stage": "expected_blocked",
+            "ticks": 720
+          }
+        ],
+        "team": 2
+      }
+    ],
+    "schema_version": 1
+  },
+  "export": {
+    "version": "0.5.2-consolidation",
+    "headless_smoke_checks": 9,
+    "rendered_smoke_checks": 12,
+    "screens_visually_inspected": [
+      "menu",
+      "default blueprint"
+    ],
+    "normal_debug_panel": "hidden"
+  }
+}

@@ -31,6 +31,9 @@ const COMMAND_UI = preload("res://scripts/ui/squad_command_ui.gd")
 var match_options: Dictionary = {}
 var player_controller: RefCounted
 var simulation_time := 0.0
+# Opt-in developer measurements; ordinary play does not read wall clocks here.
+var profile_enabled := false
+var profile_metrics: Dictionary = {}
 var next_simulation_id := 1
 var surrendered_team := 0
 var telemetry: RefCounted
@@ -164,12 +167,18 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if not battle_active:
 		return
+	profile_enabled = match_options.get("profile",false)
+	var begin := Time.get_ticks_usec() if profile_enabled else 0
 	simulation_time += delta
 	telemetry.tick(delta)
 	for economy in economies.values():
 		economy.tick(delta)
+	var phase := Time.get_ticks_usec() if profile_enabled else 0
 	formation_manager.tick(delta)
+	if profile_enabled: profile_add("formation_us",Time.get_ticks_usec()-phase)
+	phase = Time.get_ticks_usec() if profile_enabled else 0
 	squad_commands.tick(delta)
+	if profile_enabled: profile_add("commands_us",Time.get_ticks_usec()-phase)
 	refresh_occupancy()
 	_check_deployment_lock(delta)
 	if battle_active and tuning.enemy_enabled and surrendered_team != 1:
@@ -177,6 +186,10 @@ func _physics_process(delta: float) -> void:
 	if battle_active and player_controller != null and surrendered_team != 2:
 		player_controller.tick(delta)
 	zone_overlay.queue_redraw()
+	if profile_enabled: profile_add("battle_us",Time.get_ticks_usec()-begin)
+
+func profile_add(key: String, amount: int) -> void:
+	profile_metrics[key] = profile_metrics.get(key,0)+amount
 
 func _fit_camera() -> void:
 	var area := battlefield_view_rect()

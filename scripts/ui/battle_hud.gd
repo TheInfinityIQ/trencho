@@ -55,7 +55,7 @@ func _ready() -> void:
 		camera_toolbar.add_child(button)
 	var help := Button.new()
 	help.text = "Controls"
-	help.tooltip_text = "Scroll or +/−: zoom\nMiddle drag / WASD / arrows: pan\nHome: overview · F11: fullscreen\nClick soldier: squad · Shift+click: add/remove squad\nClick friendly shield: defending squads\nDrag white handle: route; close a loop: Defend\nEnd open route in friendly territory: reinforce\nEsc / right-click: back one step\nHover selected package summary: modified unit stats"
+	help.tooltip_text = "Scroll or +/−: zoom\nMiddle drag / WASD / arrows: pan\nHome: overview · F11: fullscreen\nClick soldier: squad · Shift+click: add/remove squad\nClick friendly shield: defending squads\nDrag white handle: route; close a loop: Defend (auto-faces enemy)\nEnd open route on a friendly shield: reinforce\nEsc / right-click: back one step\nHover selected package summary: modified unit stats"
 	help.pressed.connect(func(): controls_help.visible = not controls_help.visible)
 	camera_toolbar.add_child(help)
 	controls_help = Label.new()

@@ -81,7 +81,7 @@ func _build_blueprint() -> void:
 	help.position = Vector2(24, 387)
 	help.size = Vector2(570, 34)
 	help.add_theme_font_size_override("font_size", 13)
-	help.text = "Drag edges/corners to resize. FRONT ↑ shows formation priority; your order sets facing.\nNothing is spent until your drawn order is accepted. Esc / right-click: cancel."
+	help.text = "Drag edges/corners to resize. Defend faces the enemy.\nNothing is spent until your order is accepted. Esc / right-click: cancel."
 	content.add_child(help)
 	var confirm := Button.new()
 	confirm_button = confirm
@@ -110,7 +110,8 @@ func open_blueprint(world: Vector2) -> void:
 	blueprint.visible = true
 	blueprint.position = (get_viewport_rect().size - blueprint.size) * 0.5
 	game.planning.begin()
-	set_blueprint_size(blueprint_width, blueprint_depth)
+	var default_size: Vector2 = game.deployment_manager.default_blueprint_size(resolved.resolved_deployment.quantity)
+	set_blueprint_size(default_size.x,default_size.y)
 
 func _blueprint_scale() -> float:
 	return minf((blueprint_preview.size.x - 40) / minf(game.field_size.x, 3000), (blueprint_preview.size.y - 40) / 1800)
@@ -267,31 +268,37 @@ func begin_gesture(point: Vector2) -> void:
 func finish_gesture() -> Dictionary:
 	gesture_active = false
 	gesture_debug = RECOGNIZER.classify(stroke)
+	var endpoint: Vector2 = game.screen_to_battle(stroke[-1]) if not stroke.is_empty() else Vector2.INF
+	var anchor: int = game.squad_commands.reinforcement_target(2,endpoint) if gesture_debug.command_type=="ADVANCE" else -1
+	game.telemetry.event("COMMAND_GESTURE",{"gesture_type":gesture_debug.command_type,"classified":gesture_debug.success,"anchor_targeted":anchor>=0,"point_id":anchor,"final_command":"REINFORCE" if anchor>=0 else gesture_debug.command_type,"failure_reason":gesture_debug.failure_reason})
 	if not gesture_debug.success:
 		return fail(gesture_debug.failure_reason, gesture_origin)
 	var kind: String = gesture_debug.command_type
 	var route := PackedVector2Array()
 	for index in range(1,gesture_debug.route.size()): route.append(game.screen_to_battle(gesture_debug.route[index]))
+	var approach := PackedVector2Array()
+	for point in gesture_debug.route: approach.append(game.screen_to_battle(point))
 	var center: Vector2 = game.screen_to_battle(gesture_debug.center)
 	var radius: float = gesture_debug.radius / game.get_node("Camera2D").zoom.x
 	var result: Dictionary
 	if pending_ready:
 		if game.hand.selected_cards() != pending_cards:
 			return fail("INVALID_CARD", gesture_origin)
-		var deployment: Dictionary = game.deployment_manager.request_squad(2, pending_cards, pending_rectangle, kind, center, radius, route)
+		var deployment: Dictionary = game.deployment_manager.request_squad(2, pending_cards, pending_rectangle, kind, center, radius, route, approach)
 		if not deployment.is_valid: return fail(deployment.failure_reason, center)
 		result = deployment.command_result
 		game.hand._consume(game.hand.selected_indices)
 		pending_cards.clear()
 		pending_ready = false
 	else:
-		result = game.squad_commands.issue_selected(kind, center, radius, route)
+		result = game.squad_commands.issue_selected(kind, center, radius, route, approach)
 	stroke.clear()
 	had_command_selection = false
 	game.planning.end()
 	return result
 
 func fail(reason: String, origin: Vector2) -> Dictionary:
+	game.telemetry.event("COMMAND_REJECTED",{"team":2,"failure_reason":reason,"origin":origin})
 	gesture_active = false
 	had_command_selection = false
 	game.hand.has_footprint = false
@@ -430,7 +437,7 @@ func _process(_delta: float) -> void:
 		preview_target = -1
 		preview_projection = {}
 		if live_recognition.success and live_recognition.command_type == "ADVANCE" and not stroke.is_empty():
-			preview_target = game.squad_commands.points.point_at(2,game.screen_to_battle(stroke[-1]))
+			preview_target = game.squad_commands.reinforcement_target(2,game.screen_to_battle(stroke[-1]))
 			if preview_target >= 0:
 				var extra := 0
 				if pending_ready:
@@ -498,11 +505,13 @@ func preview_state(recognition: Dictionary) -> Dictionary:
 	var kind: String = recognition.command_type
 	var route := PackedVector2Array()
 	for index in range(1, recognition.route.size()): route.append(game.screen_to_battle(recognition.route[index]))
+	var approach := PackedVector2Array()
+	for point in recognition.route: approach.append(game.screen_to_battle(point))
 	var center: Vector2 = game.screen_to_battle(recognition.center)
 	var reason := ""
 	var count := 0
 	if pending_ready:
-		var validation: Dictionary = game.deployment_manager.validate_squad(2, pending_cards, pending_rectangle, kind, center, 0, route)
+		var validation: Dictionary = game.deployment_manager.validate_squad(2, pending_cards, pending_rectangle, kind, center, 0, route, approach)
 		if not validation.is_valid: reason = validation.failure_reason
 		response.front_plan = validation.get("defense_plan",{})
 		if game.hand.selected_cards() != pending_cards: reason = "INVALID_CARD"
@@ -514,18 +523,22 @@ func preview_state(recognition: Dictionary) -> Dictionary:
 			if squad.retreating: reason = "SQUAD_RETREATING"
 		for waypoint in route:
 			if not waypoint.is_finite() or not Rect2(Vector2.ZERO,game.field_size).has_point(waypoint): reason = "POSITION_UNREACHABLE"
-		var target: int = game.squad_commands.points.point_at(2,route[-1]) if kind == "ADVANCE" and not route.is_empty() else -1
+		var target: int = game.squad_commands.reinforcement_target(2,route[-1]) if kind == "ADVANCE" and not route.is_empty() else -1
 		if reason.is_empty() and (kind == "DEFEND" or target >= 0):
-			var plan: Dictionary = game.squad_commands.fronts.plan(group,center,route,target)
+			var plan: Dictionary = game.squad_commands.fronts.plan(group,center,route,target,Vector2.ZERO,game.squad_commands.reinforcement_preference(target,approach) if target>=0 else Vector2.INF)
 			response.front_plan = plan
 			if not plan.success: reason = plan.failure_reason
 	if not game.battle_active: reason = "BATTLE_ENDED"
 	if not reason.is_empty():
 		response.text = "Cannot release: " + recovery_text(reason)
 		return response
-	if kind == "ADVANCE" and not route.is_empty(): response.target_id = game.squad_commands.points.point_at(2, route[-1])
+	if kind == "ADVANCE" and not route.is_empty(): response.target_id = game.squad_commands.reinforcement_target(2, route[-1])
 	response.valid = true
 	response.text = "Release: Establish defense" if kind == "DEFEND" else ("Release: Reinforce this position" if response.target_id >= 0 else "Release: Advance along route")
+	if response.target_id >= 0:
+		var roles: Array = response.front_plan.get("proposed_blocks",[]).map(func(block): return "RESERVE" if block.role=="RESERVE" else "FRONTAGE")
+		response.text += " · "+response.front_plan.get("preferred_sector","CENTER")
+		if not roles.is_empty(): response.text += " · "+", ".join(roles)
 	if response.target_id >= 0 and preview_projection.get("warning", false): response.text += " · Capacity risk"
 	return response
 
@@ -622,7 +635,7 @@ func _draw() -> void:
 			for slot in block.slots:
 				draw_arc(transform*slot.home,maxf(3,game.tuning.unit_radius*zoom),0,TAU,12,tint,1.5,true)
 			if not block.slots.is_empty():
-				draw_string(ThemeDB.fallback_font,transform*block.slots[0].home+Vector2(8,-12),"Reserve depth" if block.role == "RESERVE" else "Frontage",HORIZONTAL_ALIGNMENT_LEFT,-1,13,tint)
+				draw_string(ThemeDB.fallback_font,transform*block.slots[0].home+Vector2(8,-12),"RESERVE" if block.role == "RESERVE" else "FRONTAGE",HORIZONTAL_ALIGNMENT_LEFT,-1,13,tint)
 	if (pending_ready or not game.squad_commands.selected_ids.is_empty()) and not blueprint.visible:
 		var knob := knob_position()
 		draw_circle(knob, 18, Color(0.05, 0.12, 0.18))
@@ -738,10 +751,12 @@ func _front_preview_plan() -> Dictionary:
 	var kind: String = live_recognition.command_type
 	var route := PackedVector2Array()
 	for index in range(1,live_recognition.route.size()): route.append(game.screen_to_battle(live_recognition.route[index]))
+	var approach := PackedVector2Array()
+	for point in live_recognition.route: approach.append(game.screen_to_battle(point))
 	var center: Vector2 = game.screen_to_battle(live_recognition.center)
 	if pending_ready:
-		var validation: Dictionary = game.deployment_manager.validate_squad(2,pending_cards,pending_rectangle,kind,center,0,route)
+		var validation: Dictionary = game.deployment_manager.validate_squad(2,pending_cards,pending_rectangle,kind,center,0,route,approach)
 		return validation.get("defense_plan",{})
-	var target: int = game.squad_commands.points.point_at(2,route[-1]) if kind == "ADVANCE" and not route.is_empty() else -1
+	var target: int = game.squad_commands.reinforcement_target(2,route[-1]) if kind == "ADVANCE" and not route.is_empty() else -1
 	if kind != "DEFEND" and target < 0: return {}
-	return game.squad_commands.fronts.plan(game.squad_commands.selected_squads(),center,route,target)
+	return game.squad_commands.fronts.plan(game.squad_commands.selected_squads(),center,route,target,Vector2.ZERO,game.squad_commands.reinforcement_preference(target,approach) if target>=0 else Vector2.INF)
